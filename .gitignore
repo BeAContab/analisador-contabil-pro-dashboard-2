@@ -1,0 +1,41 @@
+node_modules/
+dist/
+.vite/
+arquivos/
+arquivos_de_exemplo/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+vite-dev*.log
+.vercel/
+brain/
+.DS_Store
+Thumbs.db
+design stitch/
+~$*.docx
+~$*.xlsx
+updates.docx
+etapas.xlsx
+*.docx
+
+# Python virtual environment and caches
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Streamlit local state / secrets
+.streamlit/secrets.toml
+.streamlit/user_prefs.json
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
