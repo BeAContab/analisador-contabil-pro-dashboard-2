@@ -63,60 +63,65 @@ export function DataTable({ rows, kind }: DataTableProps) {
   }
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm flex flex-col overflow-hidden">
-      <div className="p-md flex flex-wrap items-center justify-between gap-md border-b border-outline-variant bg-surface-container-low">
+    <div className="glass-panel flex flex-col overflow-hidden">
+      <div className="p-4 sm:p-6 flex flex-wrap items-center justify-between gap-4 border-b border-surface-border bg-surface-50">
         <div className="relative flex-grow max-w-md">
-          <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-secondary">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[20px]">search</span>
           <input
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-xl pr-md py-xs bg-surface-container-lowest border border-outline rounded text-body-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-            placeholder="Pesquisar por conta, nome ou acao corretiva..."
+            className="w-full pl-10 pr-4 py-2.5 bg-background border border-surface-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            placeholder="Pesquisar por conta, nome ou ação corretiva..."
             type="text"
           />
         </div>
-        <div className="flex items-center gap-sm">
-          <span className="text-body-sm text-secondary font-medium">{filteredRows.length} registro(s)</span>
+        <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-surface-border shadow-sm">
+          <span className="text-sm text-foreground font-bold">{filteredRows.length}</span>
+          <span className="text-sm text-muted-foreground">registro(s)</span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[1100px]">
-          <thead className="bg-surface-container-low border-b border-outline-variant sticky top-0">
+        <table className="w-full text-left min-w-[1100px]">
+          <thead className="bg-surface-50 border-b border-surface-border sticky top-0 backdrop-blur-md z-10">
             <tr>
-              <Th label="Natureza" sortKey="nature" activeSort={sortKey} direction={direction} onSort={updateSort} />
-              <Th label="Conta Contabil" sortKey="account" activeSort={sortKey} direction={direction} onSort={updateSort} />
+              <Th label="Nat." sortKey="nature" activeSort={sortKey} direction={direction} onSort={updateSort} />
+              <Th label="Conta" sortKey="account" activeSort={sortKey} direction={direction} onSort={updateSort} />
               <Th label="Nome da Conta" sortKey="name" activeSort={sortKey} direction={direction} onSort={updateSort} />
               <Th label="S. Anterior" sortKey="previousBalance" activeSort={sortKey} direction={direction} onSort={updateSort} align="right" />
-              <Th label="Debito" sortKey="debit" activeSort={sortKey} direction={direction} onSort={updateSort} align="right" />
-              <Th label="Credito" sortKey="credit" activeSort={sortKey} direction={direction} onSort={updateSort} align="right" />
+              <Th label="Débito" sortKey="debit" activeSort={sortKey} direction={direction} onSort={updateSort} align="right" />
+              <Th label="Crédito" sortKey="credit" activeSort={sortKey} direction={direction} onSort={updateSort} align="right" />
               <Th label="S. Atual" sortKey="currentBalance" activeSort={sortKey} direction={direction} onSort={updateSort} align="right" />
-              <th className="px-md py-sm font-label-caps text-label-caps text-secondary uppercase tracking-wider min-w-[320px]">
-                Acao corretiva
+              <th className="px-4 py-4 font-bold text-xs text-muted-foreground uppercase tracking-wider min-w-[280px]">
+                Ação corretiva
               </th>
             </tr>
           </thead>
-          <tbody className="text-data-table font-data-table divide-y divide-outline-variant">
+          <tbody className="divide-y divide-surface-border bg-surface-30">
             {paginatedRows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-md py-xl text-center text-secondary italic bg-surface-bright">
-                  Nenhum registro encontrado para os filtros aplicados.
+                <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground italic">
+                  Nenhum registro encontrado.
                 </td>
               </tr>
             ) : (
               paginatedRows.map((row, index) => (
-                <tr key={`${row.account}-${row.name}-${index}`} className="hover:bg-surface-container transition-colors">
-                  <td className="px-md py-xs border-r border-outline-variant">{classifyAccount(row.account) || '-'}</td>
-                  <td className="px-md py-xs tabular-nums border-r border-outline-variant font-medium text-primary">{row.account}</td>
-                  <td className="px-md py-xs border-r border-outline-variant">{row.name}</td>
-                  <td className="px-md py-xs text-right tabular-nums border-r border-outline-variant">{row.previousBalance}</td>
-                  <td className="px-md py-xs text-right tabular-nums border-r border-outline-variant">{row.debit}</td>
-                  <td className="px-md py-xs text-right tabular-nums border-r border-outline-variant">{row.credit}</td>
-                  <td className="px-md py-xs text-right tabular-nums font-bold text-primary border-r border-outline-variant">{row.currentBalance}</td>
-                  <td className="px-md py-xs align-top text-body-sm text-secondary">{correctiveAction(kind, row)}</td>
+                <tr key={`${row.account}-${row.name}-${index}`} className="hover:bg-primary/5 transition-colors group">
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{classifyAccount(row.account) || '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{row.account}</td>
+                  <td className="px-4 py-3 text-sm text-foreground truncate max-w-[200px]" title={row.name}>{row.name}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">{row.previousBalance}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">{row.debit}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">{row.credit}</td>
+                  <td className="px-4 py-3 text-right font-mono text-sm font-bold text-foreground group-hover:text-primary transition-colors">{row.currentBalance}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground align-middle">
+                    <div className="bg-background border border-surface-border px-3 py-1.5 rounded-md shadow-sm line-clamp-2" title={correctiveAction(kind, row)}>
+                      {correctiveAction(kind, row)}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -125,23 +130,22 @@ export function DataTable({ rows, kind }: DataTableProps) {
       </div>
 
       {totalPages > 1 && (
-        <div className="p-md flex items-center justify-between bg-surface-container-low border-t border-outline-variant">
-          <span className="text-body-sm text-secondary">
-            Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredRows.length)} de {filteredRows.length} registros
+        <div className="p-4 sm:p-6 flex items-center justify-between bg-surface-50 border-t border-surface-border">
+          <span className="text-sm text-muted-foreground">
+            Página <span className="font-bold text-foreground">{currentPage}</span> de <span className="font-bold text-foreground">{totalPages}</span>
           </span>
-          <div className="flex items-center gap-xs">
+          <div className="flex items-center gap-2">
             <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => p - 1)}
-              className="p-xs hover:bg-surface-container-highest rounded border border-outline-variant transition-colors disabled:opacity-30"
+              className="w-10 h-10 flex items-center justify-center bg-background hover:bg-surface-border rounded-xl border border-surface-border shadow-sm transition-all disabled:opacity-50 disabled:hover:bg-background"
             >
               <span className="material-symbols-outlined">chevron_left</span>
             </button>
-            <span className="px-sm py-xs text-body-sm font-bold bg-primary text-on-primary rounded">{currentPage}</span>
             <button
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((p) => p + 1)}
-              className="p-xs hover:bg-surface-container-highest rounded border border-outline-variant transition-colors disabled:opacity-30"
+              className="w-10 h-10 flex items-center justify-center bg-background hover:bg-surface-border rounded-xl border border-surface-border shadow-sm transition-all disabled:opacity-50 disabled:hover:bg-background"
             >
               <span className="material-symbols-outlined">chevron_right</span>
             </button>
@@ -169,15 +173,15 @@ function Th({
 }) {
   const isActive = activeSort === sortKey;
   return (
-    <th className={`px-md py-sm font-label-caps text-label-caps text-secondary uppercase tracking-wider border-r border-outline-variant ${align === 'right' ? 'text-right' : ''}`}>
+    <th className={`px-4 py-4 font-bold text-xs text-muted-foreground uppercase tracking-wider ${align === 'right' ? 'text-right' : ''}`}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className="flex items-center gap-xs hover:text-primary transition-colors w-full"
+        className="flex items-center gap-1 hover:text-foreground transition-colors w-full group"
         style={{ justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}
       >
         {label}
-        <span className={`material-symbols-outlined !text-[16px] transition-transform ${isActive ? 'opacity-100' : 'opacity-0'} ${direction === 'desc' ? 'rotate-180' : ''}`}>
+        <span className={`material-symbols-outlined text-[16px] transition-all duration-300 ${isActive ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-50'} ${direction === 'desc' ? 'rotate-180' : ''}`}>
           arrow_upward
         </span>
       </button>

@@ -1,18 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: #f4f4f5; /* zinc-100 */
+    --foreground: #09090b; /* zinc-950 */
+    
+    --primary: #0f766e; /* teal-700 / emerald-ish */
+    --primary-foreground: #ffffff;
+    --primary-hover: #0d9488; 
+
+    --surface: #ffffff;
+    --surface-80: rgba(255, 255, 255, 0.8);
+    --surface-50: rgba(255, 255, 255, 0.5);
+    --surface-30: rgba(255, 255, 255, 0.3);
+    --surface-foreground: #09090b;
+    --surface-border: #e4e4e7; /* zinc-200 */
+
+    --accent: #0ea5e9; /* sky-500 */
+    --accent-foreground: #ffffff;
+
+    --success: #10b981; /* emerald-500 */
+    --success-foreground: #ffffff;
+
+    --warning: #f59e0b; /* amber-500 */
+    --warning-foreground: #ffffff;
+
+    --error: #ef4444; /* red-500 */
+    --error-foreground: #ffffff;
+
+    --muted: #f4f4f5; /* zinc-100 */
+    --muted-foreground: #71717a; /* zinc-500 */
+  }
+
+  .dark {
+    --background: #09090b; /* zinc-950 */
+    --foreground: #fafafa; /* zinc-50 */
+    
+    --primary: #14b8a6; /* teal-500 */
+    --primary-foreground: #042f2e;
+    --primary-hover: #0d9488;
+
+    --surface: #18181b; /* zinc-900 */
+    --surface-80: rgba(24, 24, 27, 0.8);
+    --surface-50: rgba(24, 24, 27, 0.5);
+    --surface-30: rgba(24, 24, 27, 0.3);
+    --surface-foreground: #fafafa;
+    --surface-border: #27272a; /* zinc-800 */
+
+    --accent: #38bdf8; /* sky-400 */
+    --accent-foreground: #082f49;
+
+    --success: #10b981;
+    --success-foreground: #022c22;
+
+    --warning: #fbbf24;
+    --warning-foreground: #451a03;
+
+    --error: #f87171;
+    --error-foreground: #450a0a;
+
+    --muted: #27272a; /* zinc-800 */
+    --muted-foreground: #a1a1aa; /* zinc-400 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-surface-border;
+  }
   body {
-    @apply bg-background text-on-background font-body-md;
+    @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
   }
 }
 
 @layer components {
-  .soft-lift {
-    box-shadow: 0px 4px 6px -1px rgba(0, 45, 91, 0.05), 0px 2px 4px -1px rgba(0, 45, 91, 0.03);
+  .glass-panel {
+    @apply bg-surface-80 backdrop-blur-glass border border-surface-border shadow-glass rounded-xl;
   }
-
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }

@@ -39,3 +39,6 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
+
+# Others
+plano de contas.xls

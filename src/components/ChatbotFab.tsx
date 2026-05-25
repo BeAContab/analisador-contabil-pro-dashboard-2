@@ -78,7 +78,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
         {
           id: `report-update-${reports.length}-${Date.now()}`,
           role: 'assistant',
-          content: `Analise carregada. Agora consigo interpretar ${reports.length} empresa(s) processada(s), explicar alertas e sugerir prioridades de revisao.`
+          content: `Análise carregada. Agora consigo interpretar ${reports.length} empresa(s) processada(s), explicar alertas e sugerir prioridades de revisão.`
         }
       ]);
       setHasInjectedReportUpdate(true);
@@ -109,8 +109,6 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
 
     try {
       const apiKey = getStoredGeminiApiKey();
-      // When a Gemini key exists, we enrich the question with report context and
-      // let the model produce the explanation. Without a key, we stay fully local.
       const assistantContent = apiKey
         ? await generateGeminiChatReply({
             apiKey,
@@ -149,7 +147,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   }
 
   function handleSuggestion(prompt: string) {
-    setIsOpen(true);
+    if (!isOpen) setIsOpen(true);
     void sendMessage(prompt);
   }
 
@@ -168,57 +166,65 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[70] flex flex-col items-end gap-4">
-      {isOpen && (
-        <section className="w-[min(420px,calc(100vw-1.5rem))] overflow-hidden rounded-[28px] border border-outline-variant bg-surface-container-lowest shadow-[0_24px_50px_rgba(0,24,54,0.18)]">
-          <header className="bg-primary px-lg py-md text-on-primary">
-            <div className="flex items-start justify-between gap-md">
-              <div>
-                <p className="text-label-caps font-label-caps uppercase opacity-80">Assistente IA</p>
-                <h2 className="text-title-sm font-title-sm">Analisador Contabil Pro</h2>
-                <p className="mt-1 text-body-sm text-on-primary/80">
-                  {isProcessing ? 'Aguardando o processamento terminar para enriquecer o contexto.' : footerNote}
-                </p>
-              </div>
-              <div className="flex items-center gap-sm">
-                <button
-                  type="button"
-                  onClick={() => setIsConfigOpen((current) => !current)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
-                  aria-label="Configurar Gemini"
-                >
-                  <span className="material-symbols-outlined">settings</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
-                  aria-label="Fechar chatbot"
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            </div>
-          </header>
+    <>
+      {/* Backdrop para o Drawer */}
+      <div 
+        className={`fixed inset-0 bg-background/40 backdrop-blur-sm z-[70] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        onClick={() => setIsOpen(false)}
+      ></div>
 
-          {isConfigOpen && (
-            <div className="border-b border-outline-variant bg-secondary-container/30 px-md py-md">
-              <div className="space-y-sm">
-                <p className="text-body-sm text-on-surface">
-                  Cole sua chave do Gemini ou use `VITE_GEMINI_API_KEY` em `.env.local`. A chave digitada aqui fica apenas na sessao atual do navegador.
-                </p>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(event) => setApiKeyInput(event.target.value)}
-                  placeholder="AIza..."
-                  className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-sm text-on-surface outline-none focus:border-primary"
-                />
-                <div className="flex items-center gap-sm">
+      {/* Side Drawer */}
+      <div className={`fixed top-0 right-0 h-screen w-[420px] max-w-[100vw] bg-surface border-l border-surface-border shadow-glass-lg z-[80] flex flex-col transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <header className="bg-primary px-6 py-6 text-primary-foreground flex-shrink-0 relative overflow-hidden">
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="flex items-start justify-between gap-4 relative z-10">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Assistente de IA</p>
+              <h2 className="text-xl font-bold">Analisador Pro</h2>
+              <p className="mt-1 text-xs opacity-80 leading-relaxed font-medium">
+                {isProcessing ? 'Aguardando o processamento terminar para enriquecer o contexto.' : footerNote}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsConfigOpen((current) => !current)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 transition-colors hover:bg-white/20"
+                title="Configurar Gemini"
+              >
+                <span className="material-symbols-outlined text-[18px]">settings</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 transition-colors hover:bg-white/20"
+                title="Fechar chatbot"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {isConfigOpen && (
+          <div className="border-b border-surface-border bg-surface-80 p-5 shadow-inner">
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                Cole sua chave do Gemini ou use `VITE_GEMINI_API_KEY` em `.env.local`. A chave digitada aqui fica apenas na sessão atual.
+              </p>
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(event) => setApiKeyInput(event.target.value)}
+                placeholder="AIza..."
+                className="w-full rounded-xl border border-surface-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition-all"
+              />
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleSaveApiKey}
-                    className="rounded-full bg-primary px-md py-sm text-body-sm text-on-primary transition-opacity hover:opacity-90"
+                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary-hover transition-colors"
                   >
                     Salvar chave
                   </button>
@@ -228,105 +234,107 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                       storeGeminiApiKey('');
                       setApiKeyInput('');
                     }}
-                    className="rounded-full border border-outline-variant px-md py-sm text-body-sm text-primary transition-colors hover:bg-surface-container-high"
+                    className="rounded-lg border border-surface-border bg-surface px-4 py-2 text-xs font-bold text-foreground hover:bg-muted transition-colors"
                   >
                     Limpar
                   </button>
-                  <span className="text-body-sm text-secondary">{activeApiKey ? 'Gemini ativo' : 'Modo local'}</span>
                 </div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${activeApiKey ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                  {activeApiKey ? 'Gemini ativo' : 'Modo local'}
+                </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        <div className="border-b border-surface-border bg-surface-50 p-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.id}
+                type="button"
+                onClick={() => handleSuggestion(suggestion.prompt)}
+                className="whitespace-nowrap rounded-lg border border-surface-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:border-primary/50 hover:text-primary transition-all shadow-sm"
+              >
+                {suggestion.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-surface-30 p-5 flex flex-col gap-6 scrollbar-hide">
+          {messages.map((message) => (
+            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <article
+                className={`max-w-[85%] rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-sm ${
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                    : 'bg-background text-foreground border border-surface-border rounded-tl-sm'
+                }`}
+              >
+                {message.content}
+              </article>
+            </div>
+          ))}
+          {isLoadingReply && (
+            <div className="flex justify-start">
+              <article className="max-w-[85%] rounded-2xl rounded-tl-sm border border-surface-border bg-background px-5 py-4 text-sm text-muted-foreground flex items-center gap-3">
+                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                {activeApiKey ? 'Consultando Gemini...' : 'Gerando resposta local...'}
+              </article>
             </div>
           )}
+        </div>
 
-          <div className="border-b border-outline-variant bg-surface-container-low px-md py-md">
-            <div className="flex gap-sm overflow-x-auto pb-1">
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion.id}
-                  type="button"
-                  onClick={() => handleSuggestion(suggestion.prompt)}
-                  className="whitespace-nowrap rounded-full border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-sm text-primary transition-colors hover:bg-surface-container-high"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
-            </div>
+        <form onSubmit={handleSubmit} className="border-t border-surface-border bg-surface-80 p-5 backdrop-blur-sm">
+          <div className="flex items-end gap-3">
+            <textarea
+              id="chatbot-input"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  void sendMessage(input);
+                }
+              }}
+              rows={2}
+              placeholder="Faça uma pergunta sobre o balancete..."
+              className="min-h-[60px] flex-1 resize-none rounded-2xl border border-surface-border bg-background px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
+            />
+            <button
+              type="submit"
+              className="flex h-[60px] w-[60px] flex-shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md transition-all hover:-translate-y-1 hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-md"
+              disabled={!input.trim() || isLoadingReply}
+              title="Enviar mensagem"
+            >
+              <span className="material-symbols-outlined text-[24px]">send</span>
+            </button>
           </div>
+        </form>
+      </div>
 
-          <div ref={scrollRef} className="flex max-h-[28rem] min-h-[22rem] flex-col gap-md overflow-y-auto bg-surface px-md py-md">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <article
-                  className={`max-w-[85%] rounded-2xl px-md py-md text-body-sm leading-relaxed ${
-                    message.role === 'user'
-                      ? 'bg-primary text-on-primary rounded-br-sm'
-                      : 'bg-surface-container-lowest text-on-surface border border-outline-variant rounded-bl-sm'
-                  }`}
-                >
-                  {message.content}
-                </article>
-              </div>
-            ))}
-            {isLoadingReply && (
-              <div className="flex justify-start">
-                <article className="max-w-[85%] rounded-2xl rounded-bl-sm border border-outline-variant bg-surface-container-lowest px-md py-md text-body-sm text-on-surface">
-                  {activeApiKey ? 'Consultando Gemini...' : 'Gerando resposta local...'}
-                </article>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmit} className="border-t border-outline-variant bg-surface-container-low px-md py-md">
-            <div className="flex items-end gap-sm">
-              <label className="sr-only" htmlFor="chatbot-input">
-                Pergunta para a assistente
-              </label>
-              <textarea
-                id="chatbot-input"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    void sendMessage(input);
-                  }
-                }}
-                rows={2}
-                placeholder="Pergunte sobre alertas, empresas, clientes, fornecedores..."
-                className="min-h-[56px] flex-1 resize-none rounded-2xl border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-sm text-on-surface outline-none transition-colors placeholder:text-secondary focus:border-primary"
-              />
-              <button
-                type="submit"
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary transition-transform hover:scale-[1.02] disabled:opacity-50"
-                disabled={!input.trim() || isLoadingReply}
-                aria-label="Enviar mensagem"
-              >
-                <span className="material-symbols-outlined">arrow_upward</span>
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="group relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_16px_36px_rgba(0,24,54,0.28)] transition-transform hover:scale-105"
-        aria-label={isOpen ? 'Fechar chatbot' : 'Abrir chatbot'}
-      >
-        <span className="material-symbols-outlined !text-[28px]">{isOpen ? 'close' : 'chat'}</span>
-        {!isOpen && totalOccurrences > 0 && (
-          <span className="absolute -right-1 -top-1 min-w-[28px] rounded-full bg-error px-2 py-1 text-center text-[11px] font-bold text-on-error">
-            {totalOccurrences > 99 ? '99+' : totalOccurrences}
-          </span>
-        )}
-      </button>
-    </div>
+      {/* Botão Flutuante (FAB) */}
+      <div className={`fixed bottom-8 right-8 z-[60] transition-all duration-500 ${isOpen ? 'translate-x-[200%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="group relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 hover:scale-105"
+          title="Abrir Assistente IA"
+        >
+          <span className="material-symbols-outlined text-[28px]">smart_toy</span>
+          {totalOccurrences > 0 && (
+            <span className="absolute -right-2 -top-2 flex h-6 min-w-[24px] items-center justify-center rounded-full bg-error px-1.5 text-[10px] font-bold text-error-foreground shadow-sm ring-2 ring-background">
+              {totalOccurrences > 99 ? '99+' : totalOccurrences}
+            </span>
+          )}
+        </button>
+      </div>
+    </>
   );
 }
 
 function sanitizeGeminiError(errorMessage: string) {
-  // Prevent accidental key leakage if the provider echoes the credential back.
   return errorMessage
     .replace(/\s+/g, ' ')
     .replace(/AIza[0-9A-Za-z\-_]+/g, '[api-key-redacted]')
