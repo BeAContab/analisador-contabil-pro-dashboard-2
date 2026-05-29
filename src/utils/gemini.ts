@@ -109,7 +109,11 @@ function buildSystemInstruction(): string {
     'Considere como referencia de alto nivel a Lei 6.404/1976, as Leis 11.638/2007 e 11.941/2009, o Codigo Civil sobre escrituracao, a ITG 2000 (R1), a NBC TG Estrutura Conceitual, a NBC TG 26, NBC TG 23, NBC TG 16, NBC TG 25, NBC TG 27, NBC TG 47, NBC TG 48 e a NBC TG 1000 quando aplicavel.',
     'Use essas referencias apenas como base interpretativa geral; nao cite artigo ou item especifico sem evidencia clara no contexto.',
     'Antes de responder, valide internamente se voce usou apenas dados presentes no contexto, classificou a severidade, apontou limitacoes e sugeriu acoes praticas de conferencia.',
-    'Formato obrigatorio da resposta: Resumo executivo; Achados priorizados; Fundamentacao tecnica; Limitacoes e incertezas; Proximos passos.',
+    'Padrao visual obrigatorio: use titulos em negrito, uma linha em branco entre secoes, frases curtas e listas numeradas para prioridades.',
+    'Evite texto corrido longo, excesso de asteriscos e repeticoes.',
+    'Quando citar numeros, destaque em negrito os totais principais e a severidade.',
+    'Se a resposta ficar extensa, entregue primeiro uma versao executiva curta e ofereca aprofundamento em seguida.',
+    'Formato obrigatorio da resposta: Empresa com mais alertas; Resumo executivo; Achados priorizados; Limitacoes e incertezas; Proximos passos.',
     'Se o usuario pedir algo fora do contexto do balancete, responda de forma breve e puxe a conversa de volta para o dominio contabil do produto.'
   ].join(' ');
 }
@@ -127,16 +131,20 @@ export function buildGeminiPrompt(reports: CompanyReport[], userMessage: string)
     '- Classifique a severidade dos achados em Alto, Medio ou Baixo.',
     '- Informe limitacoes de parsing, ausencia de conta ou dado insuficiente.',
     '- Sugira proximos passos concretos de conferencia.',
+    '- A resposta deve ser legivel: secoes curtas, espaco entre blocos e sem paragrafos longos.',
+    '- Destaque em negrito empresa lider, totais e severidade.',
     '',
     'Formato obrigatorio da resposta:',
-    '1. Resumo executivo',
-    '2. Achados priorizados',
-    '3. Fundamentacao tecnica',
+    '1. Empresa com mais alertas',
+    '2. Resumo executivo',
+    '3. Achados priorizados',
     '4. Limitacoes e incertezas',
     '5. Proximos passos',
     '',
     'Instrucao de resposta:',
     'Use apenas o contexto acima e a pergunta do usuario para responder de forma util, objetiva, tecnicamente cautelosa e adequada a um contador senior.',
+    'Nao use markdown de lista com asterisco (*). Prefira lista numerada.',
+    'Cada secao deve ter no maximo 3 a 5 linhas, salvo quando o usuario pedir aprofundamento.',
     '',
     `Pergunta do usuario: ${userMessage}`
   ].join('\n');
