@@ -25,20 +25,17 @@ updates.docx
 etapas.xlsx
 *.docx
 
-# Python virtual environment and caches
+# Ambientes e caches locais legados
 .venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
-# Streamlit local state / secrets
-.streamlit/secrets.toml
-.streamlit/user_prefs.json
-
 # Local databases
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-journal
 
 # Others
 plano de contas.xls

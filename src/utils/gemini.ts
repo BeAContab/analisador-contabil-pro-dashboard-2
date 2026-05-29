@@ -2,6 +2,7 @@ import { CompanyReport } from '../types';
 import { formatNumberAsBrazilianMoney } from './format';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_KEY_STORAGE_KEY = 'gemini_api_key';
 
 export interface ChatTurn {
   role: 'user' | 'model';
@@ -9,19 +10,33 @@ export interface ChatTurn {
 }
 
 export function getStoredGeminiApiKey(): string {
-  const runtimeKey = typeof window !== 'undefined' ? window.sessionStorage.getItem('gemini_api_key') : null;
-  return runtimeKey?.trim() || (import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '');
+  if (typeof window === 'undefined') return import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+
+  const persistentKey = window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY)?.trim();
+  if (persistentKey) return persistentKey;
+
+  const legacySessionKey = window.sessionStorage.getItem(GEMINI_API_KEY_STORAGE_KEY)?.trim();
+  if (legacySessionKey) {
+    // Migra chaves salvas no formato antigo para preservar a configuracao do usuario.
+    window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, legacySessionKey);
+    window.sessionStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+    return legacySessionKey;
+  }
+
+  return import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
 }
 
 export function storeGeminiApiKey(apiKey: string) {
   if (typeof window === 'undefined') return;
   const trimmed = apiKey.trim();
   if (!trimmed) {
-    window.sessionStorage.removeItem('gemini_api_key');
+    window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+    window.sessionStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
     return;
   }
 
-  window.sessionStorage.setItem('gemini_api_key', trimmed);
+  window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, trimmed);
+  window.sessionStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
 }
 
 export async function generateGeminiChatReply(params: {
@@ -119,8 +134,8 @@ function buildSystemInstruction(): string {
 }
 
 export function buildGeminiPrompt(reports: CompanyReport[], userMessage: string): string {
-  // The model receives a compact operational summary instead of the full raw
-  // dataset so we keep prompts lighter and more focused on interpretation.
+  // O modelo recebe um resumo operacional em vez da base completa para manter
+  // o prompt mais leve e focado na interpretacao.
   return [
     'Contexto estruturado do sistema:',
     summarizeReportsForPrompt(reports),
@@ -272,8 +287,8 @@ function shouldContinueGeminiReply(result: { text: string; finishReason?: string
   const text = result.text.trim();
   if (!text) return false;
 
-  // We use lightweight heuristics here to catch abrupt truncation even when the
-  // provider does not explicitly flag token exhaustion.
+  // Heuristicas leves para detectar respostas cortadas mesmo quando o provedor
+  // nao sinaliza explicitamente esgotamento de tokens.
   const lastChar = text[text.length - 1];
   const endsAbruptly =
     /[A-Za-z0-9)]/.test(lastChar) &&

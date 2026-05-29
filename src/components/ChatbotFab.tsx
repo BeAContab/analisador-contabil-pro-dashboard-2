@@ -210,7 +210,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
           <div className="border-b border-surface-border bg-surface-80 p-5 shadow-inner">
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                Cole sua chave do Gemini ou use `VITE_GEMINI_API_KEY` em `.env.local`. A chave digitada aqui fica apenas na sessão atual.
+                Cole sua chave do Gemini ou use `VITE_GEMINI_API_KEY` em `.env.local`. A chave digitada aqui fica salva neste navegador.
               </p>
               <input
                 type="password"

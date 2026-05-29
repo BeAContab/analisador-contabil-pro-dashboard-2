@@ -1,116 +1,82 @@
-# Analisador Contábil Pro — Dashboard v2
+# Analisador Contabil Pro - Dashboard v2
 
-> Aplicação web para análise automatizada de balancetes contábeis em PDF, com relatórios de ocorrências, exportação em Excel/PDF e assistente de IA integrado.
+Aplicacao web para analise automatizada de balancetes contabeis em PDF, com relatorios de ocorrencias, exportacao em Excel/PDF e assistente de IA integrado.
 
----
+## Funcionalidades
 
-## ✨ Features
+- Upload drag and drop de multiplos PDFs de balancetes.
+- Analise automatizada de saldos invertidos, contas sem movimentacao, CMV x Receita e outras regras contabeis.
+- Resumo executivo com cards de status, relatorios afetados e total de ocorrencias.
+- Drill-down por empresa com tabelas ordenaveis e paginadas.
+- Tema claro/escuro com persistencia em `localStorage`.
+- Assistente de IA com Gemini ou modo local.
+- Exportacao de relatorios em PDF e Excel.
+- Processamento dos PDFs no navegador do usuario.
 
-- **Upload Drag & Drop** — Arraste múltiplos PDFs de balancetes para análise simultânea.
-- **Análise Automatizada** — Detecção de saldos invertidos, contas sem movimentação, CMV × Receita e mais.
-- **Bento Grid de Resumo** — Painel visual com cards de status geral, relatórios afetados e total de ocorrências.
-- **Drill-down por Empresa** — Clique em uma empresa para ver detalhes completos com tabelas ordenáveis e paginadas.
-- **Dark / Light Mode** — Alternância de tema com transições suaves e persistência em `localStorage`.
-- **Chatbot com IA** — Drawer lateral integrado com suporte ao Gemini (API key) ou respostas locais.
-- **Exportação** — Geração de relatórios em PDF (jsPDF) e planilhas Excel (SheetJS).
-- **Processamento 100% Local** — Nenhum dado contábil sai do navegador do usuário.
-
----
-
-## 🛠️ Stack Tecnológica
-
-### Frontend (React + Vite)
-
-| Tecnologia | Versão | Uso |
-|---|---|---|
-| React | 18.3 | UI reativa com componentes funcionais |
-| Vite | 6.x | Bundler e dev server ultra-rápido |
-| TypeScript | 5.7 | Tipagem estática |
-| Tailwind CSS | 3.4 | Sistema de design com CSS variables |
-| jsPDF | 2.5 | Exportação de relatórios em PDF |
-| SheetJS (xlsx) | 0.18 | Exportação de dados em Excel |
-| pdf.js | 4.10 | Parsing de PDFs no navegador |
-
-### Backend (Python + Streamlit) — Opcional
+## Stack Tecnologica
 
 | Tecnologia | Uso |
 |---|---|
-| Python 3.10+ | Runtime |
-| Streamlit | Interface alternativa e API local |
+| React 18 | Interface web |
+| Vite 6 | Build, desenvolvimento local e deploy Vercel |
+| TypeScript 5.7 | Tipagem da aplicacao |
+| Tailwind CSS 3.4 | Estilos e tokens visuais |
+| pdf.js | Leitura dos PDFs no navegador |
+| jsPDF | Exportacao de relatorios em PDF |
+| SheetJS (`xlsx`) | Exportacao de dados em Excel |
 
----
-
-## 🚀 Como Executar
-
-### Frontend (principal)
+## Como Executar
 
 ```bash
-# Instalar dependências
 npm install
-
-# Iniciar servidor de desenvolvimento
 npm run dev
+```
 
-# Build de produção
+O app fica disponivel em `http://localhost:5173/`.
+
+Para validar o build de producao usado pela Vercel:
+
+```bash
 npm run build
-
-# Preview do build
 npm run preview
 ```
 
-O app estará disponível em `http://localhost:5173/`.
+## Deploy Vercel
 
-### Backend Streamlit (opcional)
+O projeto usa somente React + Vite para deploy.
 
-```bash
-# Criar e ativar ambiente virtual
-python -m venv .venv
+Config atual em `vercel.json`:
 
-# Windows
-.venv\Scripts\activate
+- Framework: `vite`
+- Build command: `npm run build`
+- Output directory: `dist`
 
-# Linux/macOS
-source .venv/bin/activate
+## Variaveis de Ambiente
 
-# Instalar dependências
-pip install -r requirements.txt
-
-# Executar
-streamlit run app.py
-```
-
----
-
-## 🔑 Variáveis de Ambiente
-
-Crie um arquivo `.env.local` na raiz do projeto (veja `.env.example`):
+Crie um arquivo `.env.local` na raiz do projeto com base em `.env.example`:
 
 ```env
-VITE_GEMINI_API_KEY=sua_chave_aqui
+VITE_GEMINI_API_KEY=cole_sua_chave_aqui
 ```
 
-> A chave do Gemini é **opcional**. Sem ela, o chatbot funciona em modo local com respostas baseadas nos dados processados.
+A chave do Gemini e opcional. Se o usuario informar a chave no assistente, ela fica salva no `localStorage` do navegador daquele usuario e sera reaproveitada em acessos futuros no mesmo perfil do navegador.
 
----
+## Estrutura do Projeto
 
-## 📁 Estrutura do Projeto
-
-```
-├── src/
-│   ├── components/       # Componentes React (Sidebar, Dropzone, Cards, Chatbot, etc.)
-│   ├── hooks/             # Custom hooks (useFileProcessing)
-│   ├── types.ts           # Tipos TypeScript compartilhados
-│   ├── styles.css         # Design system com CSS variables (Dark/Light)
-│   └── App.tsx            # Componente raiz com layout de sidebar
-├── utils/                 # Utilitários de parsing e análise
-├── tailwind.config.js     # Configuração do Tailwind com tokens customizados
-├── vite.config.ts         # Configuração do Vite
-├── app.py                 # Backend Streamlit (opcional)
-└── package.json
+```text
+src/
+  components/       Componentes React
+  hooks/            Hooks da aplicacao
+  utils/            Parsing, analises, exportacoes e integracao Gemini
+  types.ts          Tipos TypeScript compartilhados
+  styles.css        Design system e estilos globais
+  App.tsx           Componente raiz
+index.html          Entrada HTML
+vercel.json         Configuracao de deploy Vercel
+vite.config.ts      Configuracao do Vite
+package.json        Scripts e dependencias Node.js
 ```
 
----
+## Licenca
 
-## 📜 Licença
-
-Projeto privado — © BeAContab. Todos os direitos reservados.
+Projeto privado. Todos os direitos reservados.

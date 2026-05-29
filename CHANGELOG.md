@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 1.0.21 - 2026-05-29
+- Removido o fluxo legado em Python/Streamlit, mantendo o projeto focado em React + Vite para deploy na Vercel.
+- Assistente de IA passou a persistir a chave Gemini informada pelo usuario em `localStorage`, reaproveitando-a em acessos futuros no mesmo navegador.
+- Documentacao atualizada para remover instrucoes de Streamlit e descrever a stack unica do frontend.
+
 ## 1.0.20 - 2026-05-22
 - Botao `Limpar empresas carregadas` agora reinicia a sessao para estado inicial (home, sem empresas, sem chat e sem uploads), preservando apenas a chave de API salva.
 - Sidebar foi separada em dois menus de relatorios: ocorrencias > 0 visiveis direto e ocorrencias = 0 ocultas por padrao, com botao para revelar/ocultar.
