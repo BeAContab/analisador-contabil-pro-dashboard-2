@@ -143,13 +143,13 @@ function answerForSpecificCompany(report: CompanyReport): string {
   const highlights: string[] = [];
 
   if (report.invertedRows.length > 0) {
-    highlights.push(`${report.invertedRows.length} saldo(s) invertido(s)`);
+    highlights.push(`${report.invertedRows.length} inversao(oes) de saldo contabil`);
   }
   if (report.zeroMovementRows.length > 0) {
-    highlights.push(`${report.zeroMovementRows.length} conta(s) sem movimentacao`);
+    highlights.push(`${report.zeroMovementRows.length} conta(s) inativa(s) no periodo`);
   }
   if (report.comparisonReport.isAttention) {
-    highlights.push('divergencia na comparacao entre distribuicao e resultado');
+    highlights.push('divergencia na conciliacao do resultado liquido ajustado');
   }
   if (report.unclassified.length > 0) {
     highlights.push(`${report.unclassified.length} linha(s) nao classificadas`);
@@ -200,23 +200,23 @@ function buildPriorityResponse(reports: CompanyReport[]): string {
 function buildInvertedResponse(reports: CompanyReport[]): string {
   const total = reports.reduce((sum, report) => sum + report.invertedRows.length, 0);
   if (total === 0) {
-    return 'Nao encontrei saldos invertidos nos balancetes processados. Pelas regras atuais, isso indica que as contas do Ativo e do Passivo/PL nao terminaram com natureza inconsistente.';
+    return 'Nao encontrei inversoes de saldo contabil nos balancetes processados. Pelas regras atuais, isso indica que as contas do Ativo e do Passivo/PL nao terminaram com natureza inconsistente.';
   }
 
   const top = reports
     .filter((report) => report.invertedRows.length > 0)
     .sort((left, right) => right.invertedRows.length - left.invertedRows.length)[0];
 
-  return `Foram encontrados ${total} saldo(s) invertido(s). Esse alerta aparece quando contas do Ativo terminam credoras ou contas do Passivo/PL terminam devedoras, fora das excecoes previstas. A concentracao mais alta esta em ${top.companyName}, com ${top.invertedRows.length} ocorrencia(s). O proximo passo ideal e revisar classificacao, encerramento e possiveis lancamentos invertidos.`;
+  return `Foram encontradas ${total} inversao(oes) de saldo contabil. Esse alerta aparece quando contas do Ativo terminam credoras ou contas do Passivo/PL terminam devedoras, fora das excecoes previstas. A concentracao mais alta esta em ${top.companyName}, com ${top.invertedRows.length} ocorrencia(s). O proximo passo ideal e revisar classificacao, encerramento e possiveis lancamentos invertidos.`;
 }
 
 function buildZeroMovementResponse(reports: CompanyReport[]): string {
   const total = reports.reduce((sum, report) => sum + report.zeroMovementRows.length, 0);
   if (total === 0) {
-    return 'Nao foram encontradas contas sem movimentacao no recorte atual. Isso sugere que, pelas regras usadas, nao houve combinacao relevante de debito zero e credito zero nas contas sinalizadas.';
+    return 'Nao foram encontradas contas inativas no periodo no recorte atual. Isso sugere que as contas analisadas registraram movimentacoes contabeis no periodo.';
   }
 
-  return `Foram encontradas ${total} conta(s) sem movimentacao. Esse relatorio ajuda a localizar contas que permaneceram paradas no periodo e podem merecer revisao de uso, encerramento ou classificacao, principalmente quando deveriam ter participado da movimentacao operacional.`;
+  return `Foram encontradas ${total} conta(s) inativa(s) no periodo. Esse relatorio ajuda a localizar contas que permaneceram sem movimentacao e podem merecer revisao de uso, encerramento ou classificacao, principalmente quando deveriam ter participado da movimentacao operacional.`;
 }
 
 function buildUnclassifiedResponse(reports: CompanyReport[]): string {
@@ -264,10 +264,10 @@ function buildStocksResponse(reports: CompanyReport[]): string {
 function buildComparisonResponse(reports: CompanyReport[]): string {
   const affected = reports.filter((report) => report.comparisonReport.isAttention);
   if (affected.length === 0) {
-    return 'A comparacao entre Distribuicao Antecipada de Lucros, Resultado do Periodo e Lucros/Prejuizos Acumulados nao apresentou alerta no contexto atual.';
+    return 'A conciliacao do resultado liquido ajustado nao apresentou alerta no contexto atual.';
   }
 
-  return `${affected.length} empresa(s) apresentaram alerta na comparacao entre distribuicao e resultado. Essa verificacao procura inconsistencias entre as contas 3, 6, 2.4.13 e 1.1.04.019, conforme a disponibilidade dos saldos. Vale conferir se houve distribuicao registrada acima da base contabil esperada ou se faltou alguma conta no PDF.`;
+  return `${affected.length} empresa(s) apresentaram alerta na conciliacao do resultado liquido ajustado. Essa verificacao procura inconsistencias entre as contas 3, 6, 2.4.13 e 1.1.04.019, conforme a disponibilidade dos saldos. Vale conferir se houve distribuicao registrada acima da base contabil esperada ou se faltou alguma conta no PDF.`;
 }
 
 function findCompanyMention(question: string, reports: CompanyReport[]): CompanyReport | undefined {

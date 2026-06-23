@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState, useEffect } from 'react';
 import { CompanyCard } from './components/CompanyCard';
 import { CompanyOverviewCard } from './components/CompanyOverviewCard';
 import { CompanyReport } from './types';
@@ -7,6 +7,10 @@ import { Dropzone } from './components/Dropzone';
 import { SummaryCards } from './components/SummaryCards';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { useFileProcessing } from './hooks/useFileProcessing';
+import { AuthProvider, useAuth } from './hooks/useAuth';
+import { LandingPage } from './components/LandingPage';
+import { AuthPages } from './components/AuthPages';
+import { AccountPanel } from './components/AccountPanel';
 
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicy })));
 const DataSecurity = lazy(() => import('./components/DataSecurity').then((module) => ({ default: module.DataSecurity })));
@@ -15,11 +19,19 @@ const LocalProcessingDoc = lazy(() =>
 );
 const ChatbotFab = lazy(() => import('./components/ChatbotFab').then((module) => ({ default: module.ChatbotFab })));
 
-type View = 'main' | 'privacy' | 'security' | 'docs';
+/** Conjunto de todas as visualizações possíveis da aplicação */
+type View = 'landing' | 'login' | 'signup' | 'paywall' | 'account' | 'main' | 'privacy' | 'security' | 'docs';
 
-export function App() {
-  const [view, setView] = useState<View>('main');
+/**
+ * Componente raiz interno que consome o contexto de autenticação.
+ * Gerencia a navegação entre as views e as proteções de acesso.
+ */
+function AppInner() {
+  const { isAuthenticated, hasActiveSubscription, loading, user } = useAuth();
+  const [view, setView] = useState<View>('landing');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  // Plano pré-selecionado pelo usuário na landing page antes de fazer login
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
 
   const {
     files,
@@ -42,7 +54,38 @@ export function App() {
 
   const resultsSummary = useMemo(() => buildResultsSummary(reports), [reports]);
 
-  const handleNavigate = (newView: View) => {
+  /**
+   * Regra de negócio de navegação:
+   * Após o carregamento da sessão, direciona o usuário para a view correta
+   * conforme seu estado de autenticação e assinatura.
+   */
+  useEffect(() => {
+    if (loading) return;
+
+    if (!isAuthenticated) {
+      // Usuário não autenticado: mantém na landing, login ou signup
+      if (!['landing', 'login', 'signup'].includes(view)) {
+        setView('landing');
+      }
+      return;
+    }
+
+    // Usuário autenticado mas sem assinatura ativa
+    if (!hasActiveSubscription) {
+      if (!['paywall', 'account'].includes(view)) {
+        setView('paywall');
+      }
+      return;
+    }
+
+    // Usuário autenticado com assinatura ativa
+    if (['landing', 'login', 'signup', 'paywall'].includes(view)) {
+      setView('main');
+    }
+  }, [loading, isAuthenticated, hasActiveSubscription]);
+
+  /** Navega para uma view de dashboard, respeitando as regras de acesso */
+  const handleNavigate = (newView: 'main' | 'privacy' | 'security' | 'docs') => {
     setView(newView);
     setSelectedCompanyId(null);
   };
@@ -52,9 +95,147 @@ export function App() {
     [reports, selectedCompanyId]
   );
 
+  /**
+   * Inicia o fluxo de assinatura: redireciona para o Stripe Checkout.
+   * Se o usuário não estiver autenticado, salva o plano e redireciona para signup.
+   */
+  const handleSelectPlan = async (plan: 'monthly' | 'quarterly' | 'annual') => {
+    if (!isAuthenticated) {
+      setPendingPlan(plan);
+      setView('signup');
+      return;
+    }
+    await redirectToCheckout(plan);
+  };
+
+  const redirectToCheckout = async (plan: string) => {
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (e) {
+      console.error('Erro ao criar sessão de checkout:', e);
+    }
+  };
+
+  // Redireciona o usuário autenticado para a view correspondente ao seu status de assinatura
+  const handleGoToDashboard = () => {
+    if (hasActiveSubscription) {
+      setView('main');
+    } else {
+      setView('paywall');
+    }
+  };
+
+  // Após login/signup, se houver um plano pendente, inicia o checkout automaticamente.
+  // Se não houver, direciona para o dashboard ou paywall de forma segura.
+  const handleAuthSuccess = async () => {
+    if (pendingPlan) {
+      await redirectToCheckout(pendingPlan);
+      setPendingPlan(null);
+    } else {
+      setView(hasActiveSubscription ? 'main' : 'paywall');
+    }
+  };
+
+  // Exibe indicador de carregamento enquanto verifica a sessão
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
+            <span className="material-symbols-outlined text-white text-[24px]">monitoring</span>
+          </div>
+          <p className="text-muted-foreground text-sm">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Views públicas ──
+  if (view === 'landing') {
+    return (
+      <LandingPage
+        onNavigateToLogin={() => setView('login')}
+        onNavigateToSignup={() => setView('signup')}
+        onSelectPlan={handleSelectPlan}
+        onNavigateToDashboard={handleGoToDashboard}
+      />
+    );
+  }
+
+  if (view === 'login') {
+    return (
+      <AuthPages
+        initialMode="login"
+        onSuccess={handleAuthSuccess}
+        onNavigateToLanding={() => setView('landing')}
+      />
+    );
+  }
+
+  if (view === 'signup') {
+    return (
+      <AuthPages
+        initialMode="signup"
+        onSuccess={handleAuthSuccess}
+        onNavigateToLanding={() => setView('landing')}
+      />
+    );
+  }
+
+  // ── Tela de Paywall: usuário autenticado mas sem assinatura ──
+  if (view === 'paywall') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-warning/10 flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-warning text-[32px]">lock</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Assinatura necessária</h1>
+            <p className="text-muted-foreground">
+              Olá, <strong>{user?.name}</strong>! Para acessar o Analisador Contábil Pro, você precisa de uma assinatura ativa.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => setView('landing')}
+              className="w-full py-3.5 bg-primary text-primary-foreground font-bold rounded-xl hover:bg-primary-hover transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined">star</span>
+              Ver planos e assinar
+            </button>
+            <button
+              onClick={() => setView('account')}
+              className="w-full py-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Gerenciar minha conta
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Painel de conta ──
+  if (view === 'account') {
+    return (
+      <AccountPanel
+        onNavigateToDashboard={() => setView(hasActiveSubscription ? 'main' : 'paywall')}
+      />
+    );
+  }
+
+  // ── Dashboard principal (requer assinatura ativa) ──
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
-      <Sidebar currentView={view} onNavigate={handleNavigate} />
+      <Sidebar currentView={view as 'main' | 'privacy' | 'security' | 'docs'} onNavigate={handleNavigate} onNavigateToAccount={() => setView('account')} />
 
       <div className="flex-1 relative flex flex-col h-full overflow-y-auto overflow-x-hidden">
         <main className="flex-1 w-full max-w-container-max mx-auto px-6 py-8 md:px-12 flex flex-col gap-xl">
@@ -160,6 +341,19 @@ export function App() {
         <ChatbotFab reports={reports} isProcessing={isProcessing} />
       </Suspense>
     </div>
+  );
+}
+
+/**
+ * Componente raiz da aplicação.
+ * Envolve toda a árvore de componentes com o AuthProvider
+ * para disponibilizar o contexto de autenticação globalmente.
+ */
+export function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
 

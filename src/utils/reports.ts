@@ -50,21 +50,21 @@ export const analysisOrder: AnalysisKind[] = [
 ];
 
 export const reportTabs: Array<{ kind: ReportKind; label: string }> = [
-  { kind: 'inverted', label: 'Saldos invertidos' },
-  { kind: 'zero', label: 'Contas sem movimentacao' },
-  { kind: 'comparison', label: 'Distribuicao x Resultado' },
-  { kind: 'analysis1', label: 'Clientes com Saldo Atual Baixo' },
+  { kind: 'inverted', label: 'Inversao de Saldo Contabil' },
+  { kind: 'zero', label: 'Contas Inativas no Periodo' },
+  { kind: 'comparison', label: 'Conciliacao do Resultado Liquido Ajustado' },
+  { kind: 'analysis1', label: 'Clientes com Saldo Devedor Baixo' },
   { kind: 'analysis2', label: 'Cliente Pessoa Fisica Fora da Regra' },
-  { kind: 'analysis3', label: 'Conciliacao Clientes x Receitas Operacionais' },
-  { kind: 'analysis4', label: 'Clientes com Saldo Residual' },
-  { kind: 'analysis5', label: 'Clientes sem Credito no Periodo' },
-  { kind: 'analysis6', label: 'Fornecedores sem Debito no Periodo' },
-  { kind: 'analysis7', label: 'Validacao Estoques x Fornecedores' },
-  { kind: 'analysis8', label: 'Fornecedores com Saldo Residual' },
-  { kind: 'analysis9', label: 'Fornecedores com Credito sem Debito' },
-  { kind: 'analysis10', label: 'CMV x Receita Mercadorias' },
-  { kind: 'analysis11', label: 'Depreciacao x Bens' },
-  { kind: 'analysis12', label: 'Despesas Credoras na Classe 3' }
+  { kind: 'analysis3', label: 'Cruzamento de Clientes vs. Faturamento' },
+  { kind: 'analysis4', label: 'Clientes com Saldo Devedor Residual' },
+  { kind: 'analysis5', label: 'Clientes sem Recebimento de Parcelas' },
+  { kind: 'analysis6', label: 'Fornecedores sem Pagamentos Efetuados' },
+  { kind: 'analysis7', label: 'Validacao de Estoques vs. Fornecedores' },
+  { kind: 'analysis8', label: 'Fornecedores com Saldo Credor Residual' },
+  { kind: 'analysis9', label: 'Provisao de Fornecedores sem Amortizacao' },
+  { kind: 'analysis10', label: 'Margem de Custo de Vendas (CMV / Receitas)' },
+  { kind: 'analysis11', label: 'Consistencia de Depreciacao do Imobilizado' },
+  { kind: 'analysis12', label: 'Despesas Credoras na Classe de Resultado' }
 ];
 
 export function reportRows(company: CompanyReport, kind: ReportKind) {
@@ -90,9 +90,9 @@ export function reportHasOccurrence(company: CompanyReport, kind: ReportKind) {
 }
 
 export function reportTitle(kind: ReportKind, company?: CompanyReport): string {
-  if (kind === 'inverted') return 'Saldos invertidos Ativo/Passivo';
-  if (kind === 'zero') return 'Contas sem movimentacao no periodo';
-  if (kind === 'comparison') return 'Comparacao Distribuicao x Resultado';
+  if (kind === 'inverted') return 'Inversao de Saldo Contabil';
+  if (kind === 'zero') return 'Contas Inativas no Periodo';
+  if (kind === 'comparison') return 'Conciliacao do Resultado Liquido Ajustado';
   return company?.analysisReports.find((report) => report.kind === kind)?.title ?? kind;
 }
 
@@ -118,13 +118,13 @@ export function analysisDepreciationPairs(company: CompanyReport, kind: Analysis
 
 export function reportIntro(kind: ReportKind, company?: CompanyReport): string {
   if (kind === 'inverted') {
-    return 'Mostra contas do ativo com S. Atual credor e contas do passivo ou patrimonio liquido com S. Atual devedor.';
+    return 'Identifica inconsistencias em contas contabeis que apresentam saldos contrarios a sua natureza tipica (ex: contas de Ativo com saldo credor ou Passivo/Patrimonio Liquido com saldo devedor).';
   }
   if (kind === 'zero') {
-    return 'Mostra contas com Debito igual a zero e Credito igual a zero no periodo.';
+    return 'Exibe as contas do plano de contas que nao registraram nenhuma movimentacao de debito ou credito durante o periodo analisado.';
   }
   if (kind === 'comparison') {
-    return 'Caso 1: Se 1.1.04.019 (DISTRIBUICAO ANTECIPADA DE LUCROS) for maior que 0, o calculo sera: A SOMA de 3 (RESULTADO DO PERIODO), 6 (RESULTADO E REGULARIZACAO) e 2.4.13 (LUCROS E PREJUIZOS ACUMULADOS) MENOS 1.1.04.019 (DISTRIBUICAO ANTECIPADA DE LUCROS).\n\nResumo: (3 + 6 + 2.4.13) - 1.1.04.019\n\nCaso 2: Se 1.1.04.019 (DISTRIBUICAO ANTECIPADA DE LUCROS) estiver zerada ou nao existir, o calculo sera: A SOMA de 3 (RESULTADO DO PERIODO) e 6 (RESULTADO E REGULARIZACAO) MENOS a conta 2.4.13 (LUCROS E PREJUIZOS ACUMULADOS).\n\nResumo: (3 + 6) - 2.4.13';
+    return 'Compara o resultado liquido acumulado (Resultado do Periodo, Regularizacoes e Lucros Acumulados) contra a distribuicao antecipada de lucros para validar a suficiencia de base contabil para distribuicao.';
   }
   return company ? analysisIntro(company, kind) : '';
 }
@@ -144,7 +144,7 @@ export function correctiveAction(kind: ReportKind, row?: LedgerLine | InvertedBa
     return 'Revisar a natureza contabil e os lancamentos que formaram o saldo final para corrigir a inversao identificada.';
   }
   if (kind === 'zero') {
-    return 'Confirmar se a conta deveria ter movimentacao no periodo; se sim, revisar integracao, parametrizacao e lancamentos. Se nao, avaliar ocultar, encerrar ou reclassificar a conta.';
+    return 'Confirmar se a conta deveria ter movimentacao no periodo; caso positivo, revisar parametrizacao de integracao e lancamentos. Caso negativo, avaliar a inativacao ou ocultacao da conta.';
   }
   if (kind === 'comparison') {
     return 'Conferir a composicao das contas 3, 6, 2.4.13 e 1.1.04.019, validar a formula aplicada no periodo e ajustar lancamentos ou classificacoes que expliquem a diferenca.';

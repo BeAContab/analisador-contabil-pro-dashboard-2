@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadmap de Próximas Implementações - Analisador Contábil Pro</title>
+  <style>
+    /* Estilos para visualização em tela */
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #eff6ff;
+      --text: #1f2937;
+      --text-muted: #4b5563;
+      --border: #e5e7eb;
+      --bg-card: #f9fafb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background-color: #ffffff;
+    }
+
+    header {
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 20px;
+      margin-bottom: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .header-title h1 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-title p {
+      margin: 5px 0 0 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .summary-box {
+      background-color: var(--primary-light);
+      border-left: 4px solid var(--primary);
+      padding: 15px 20px;
+      margin-bottom: 35px;
+      border-radius: 4px;
+    }
+
+    .summary-box p {
+      margin: 0;
+      font-size: 14px;
+      color: #1e40af;
+      font-weight: 500;
+    }
+
+    h2 {
+      color: var(--primary);
+      font-size: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-top: 35px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .task-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px;
+      margin-bottom: 15px;
+      page-break-inside: avoid; /* Impede quebra de página no meio de um card */
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .task-title {
+      font-weight: bold;
+      font-size: 15px;
+      color: var(--primary);
+      margin: 0;
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-high {
+      background-color: #fee2e2;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+
+    .badge-medium {
+      background-color: #fef3c7;
+      color: var(--warning);
+      border: 1px solid #fde68a;
+    }
+
+    .badge-low {
+      background-color: #f0fdf4;
+      color: var(--success);
+      border: 1px solid #bbf7d0;
+    }
+
+    .task-desc {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin: 0 0 10px 0;
+    }
+
+    .task-details {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .task-details li {
+      margin-bottom: 4px;
+    }
+
+    footer {
+      margin-top: 50px;
+      border-top: 1px solid var(--border);
+      padding-top: 15px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Estilos específicos para Impressão física ou PDF */
+    @media print {
+      body {
+        max-width: 100%;
+        padding: 0;
+        font-size: 12pt;
+        color: #000000;
+        background-color: #ffffff;
+      }
+
+      header {
+        border-bottom: 2px solid #000000;
+        margin-bottom: 25px;
+      }
+
+      .header-title h1 {
+        color: #000000;
+        font-size: 22pt;
+      }
+
+      h2 {
+        color: #000000;
+        font-size: 14pt;
+        border-bottom: 1px solid #000000;
+        margin-top: 25px;
+        page-break-after: avoid; /* Evita títulos órfãos no fim da página */
+      }
+
+      .summary-box {
+        background-color: #f3f4f6;
+        border-left: 3px solid #000000;
+        padding: 10px 15px;
+        margin-bottom: 20px;
+      }
+
+      .summary-box p {
+        color: #000000;
+      }
+
+      .task-card {
+        background-color: #ffffff;
+        border: 1px solid #9ca3af;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+      }
+
+      .task-title {
+        color: #000000;
+        font-size: 11pt;
+      }
+
+      .badge {
+        border: 1px solid #000000 !important;
+        background-color: transparent !important;
+        color: #000000 !important;
+        font-size: 8pt;
+      }
+
+      .task-desc {
+        font-size: 10.5pt;
+        color: #374151;
+      }
+
+      .task-details {
+        font-size: 10pt;
+        color: #000000;
+      }
+
+      .page-break {
+        page-break-before: always;
+        break-before: page;
+      }
+
+      footer {
+        font-size: 9pt;
+        border-top: 1px solid #000000;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-title">
+      <h1>Roadmap de Implementações</h1>
+      <p>Analisador Contábil Pro - Planejamento Estruturado de Desenvolvimento</p>
+    </div>
+    <div class="header-meta">
+      <strong>Proprietário:</strong> Barreira & Associados<br>
+      <strong>Data de Emissão:</strong> 23/06/2026<br>
+      <strong>Status Geral:</strong> Homologado
+    </div>
+  </header>
+
+  <div class="summary-box">
+    <p><strong>Nota de Conformidade Contábil:</strong> Todas as entregas listadas abaixo devem respeitar rigorosamente as normas brasileiras de contabilidade (ITG 2000 R1, NBC TG Estrutura Conceitual, etc.), priorizando a segurança de dados do cliente e o processamento local de arquivos.</p>
+  </div>
+
+  <!-- FASE 1 -->
+  <section>
+    <h2>Fase 1: MVP do Chatbot de Inteligência Artificial</h2>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">1.1 Integração com Endpoint Oficial Gemini 2.5 Flash</h3>
+        <span class="badge badge-high">Alta Prioridade</span>
+      </div>
+      <p class="task-desc">Configurar rotas serverless na Vercel para intermediação segura com a API do Google AI Studio, ocultando a API Key no servidor backend.</p>
+      <ul class="task-details">
+        <li>Criação de rota segura <code>/api/chat/reply</code>.</li>
+        <li>Substituição da chamada direta do cliente para o endpoint seguro local.</li>
+        <li>Proteção do tráfego usando criptografia HTTPS padrão.</li>
+      </ul>
+    </div>
+
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">1.2 Mecanismo de Fallback Inteligente Sem Chave</h3>
+        <span class="badge badge-medium">Média Prioridade</span>
+      </div>
+      <p class="task-desc">Garantir que a aplicação forneça suporte de análise mesmo se o usuário final não possuir chave própria da API do Gemini cadastrada.</p>
+      <ul class="task-details">
+        <li>Refinamento do validador baseado em expressões regulares em <code>src/utils/chatbot.ts</code>.</li>
+        <li>Respostas estáticas enriquecidas para perguntas sobre os relatórios de erros estruturais do balancete.</li>
+        <li>Aviso sutil na interface instruindo o usuário a adquirir a chave caso necessite de interpretações avançadas.</li>
+      </ul>
+    </div>
+
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">1.3 Ajustes de UX e Responsividade do Chatbot</h3>
+        <span class="badge badge-low">Baixa Prioridade</span>
+      </div>
+      <p class="task-desc">Ajustar os estados de visualização e animações do painel lateral (Drawer) do chatbot.</p>
+      <ul class="task-details">
+        <li>Responsividade para telas de tablets e dispositivos móveis (largura menor que 768px).</li>
+        <li>Suavização na transição de entrada/saída usando CSS Vanilla transform.</li>
+        <li>Opção rápida de limpar histórico da conversa para liberar memória da sessão.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- QUEBRA DE PÁGINA PARA IMPRESSÃO -->
+  <div class="page-break"></div>
+
+  <!-- FASE 2 -->
+  <section>
+    <h2>Fase 2: IA Contextual e Histórico Persistente</h2>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">2.1 Modelagem de Sessões de Chat (Turso DB)</h3>
+        <span class="badge badge-high">Alta Prioridade</span>
+      </div>
+      <p class="task-desc">Modelar e migrar tabelas relacionais de histórico de chats para permitir que o usuário retome conversas anteriores.</p>
+      <ul class="task-details">
+        <li>Criação das tabelas <code>chat_sessions</code> e <code>chat_messages</code> no banco de dados SQLite distribuído da Turso.</li>
+        <li>Relacionamento das chaves estrangeiras com a tabela de usuários autenticados (<code>users</code>).</li>
+        <li>Políticas de expiração automática ou limpeza sob demanda do usuário.</li>
+      </ul>
+    </div>
+
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">2.2 Otimização e Controle de Tokens no Prompt</h3>
+        <span class="badge badge-medium">Média Prioridade</span>
+      </div>
+      <p class="task-desc">Garantir que balancetes muito extensos não estourem os limites de tokens da API do Gemini, mantendo o custo operacional sob controle.</p>
+      <ul class="task-details">
+        <li>Implementação de algoritmo de sumarização pré-prompt em <code>src/utils/gemini.ts</code>.</li>
+        <li>Compactação de listas de saldos muito grandes, retendo apenas as contas com alertas ativos e totalizadores.</li>
+        <li>Cálculo e contagem aproximada de tokens no frontend antes do disparo.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FASE 3 -->
+  <section>
+    <h2>Fase 3: Inteligência Contábil Avançada</h2>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">3.1 Módulo de Comparação Temporal de Balancetes</h3>
+        <span class="badge badge-high">Alta Prioridade</span>
+      </div>
+      <p class="task-desc">Permitir que a IA compare múltiplos PDFs carregados em períodos subsequentes (ex: Janeiro e Fevereiro) e aponte anomalias na evolução das contas.</p>
+      <ul class="task-details">
+        <li>Mecanismo de ordenação cronológica das <code>CompanyReport</code> processadas.</li>
+        <li>Detecção automática de contas que surgiram ou desapareceram entre os meses.</li>
+        <li>Geração de alertas para flutuações anormais de saldo (ex: aumentos repentinos no grupo de despesas).</li>
+      </ul>
+    </div>
+
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">3.2 Parecer Contábil Sintético Automatizado (PDF)</h3>
+        <span class="badge badge-medium">Média Prioridade</span>
+      </div>
+      <p class="task-desc">Habilitar exportação de um relatório em PDF que inclua uma seção de parecer gerada pela IA, pronto para envio ao cliente final da contabilidade.</p>
+      <ul class="task-details">
+        <li>Integração da resposta estruturada da IA na exportação via <code>jspdf</code>.</li>
+        <li>Formatação profissional do parecer com espaços para assinatura técnica.</li>
+        <li>Possibilidade de edição manual do texto gerado pela IA antes da exportação definitiva.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- QUALIDADE E SEGURANÇA -->
+  <section>
+    <h2>Melhorias de Infraestrutura, Qualidade e Segurança</h2>
+    
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">Q.1 Criptografia Simétrica de Chaves Externas no Banco</h3>
+        <span class="badge badge-high">Alta Prioridade</span>
+      </div>
+      <p class="task-desc">Caso o usuário escolha salvar a chave do Gemini na sua conta em nuvem (em vez do localStorage), os dados devem ser criptografados com algoritmo simétrico AES-256 no Turso.</p>
+      <ul class="task-details">
+        <li>Utilização do módulo nativo <code>crypto</code> do Node.js no backend.</li>
+        <li>Chave de criptografia mestre rotacionável baseada em variáveis de ambiente na Vercel.</li>
+      </ul>
+    </div>
+
+    <div class="task-card">
+      <div class="task-header">
+        <h3 class="task-title">Q.2 Testes Automatizados no Parser Athenas3000</h3>
+        <span class="badge badge-medium">Média Prioridade</span>
+      </div>
+      <p class="task-desc">Implementação de testes de regressão automatizados para certificar a leitura correta das 7 colunas obrigatórias do sistema Athenas3000.</p>
+      <ul class="task-details">
+        <li>Criação de mock de dados simulando PDFs válidos e inválidos.</li>
+        <li>Testes unitários cobrindo o mapeamento de: Conta Contábil, Cod. R., Nome da Conta, Saldo Anterior, Débito, Crédito e Saldo Atual.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>Documento de Propriedade Exclusiva de <strong>Barreira & Associados</strong> • Todos os Direitos Reservados © 2026</p>
+  </footer>
+
+</body>
+</html>

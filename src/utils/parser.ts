@@ -329,15 +329,13 @@ function buildComparisonReport(rows: LedgerLine[]): BalanceComparisonReport {
   const isAttention = hasMissingRows || comparableBaseValue < comparableTargetValue;
 
   let message = shouldUseFallback
-    ? 'Tudo OK: a soma das contas 3 e 6 é maior que o S. Atual da conta 2.4.13.'
-    : 'Tudo OK: a soma das contas 3, 6 e 2.4.13 é maior que o S. Atual da conta 1.1.04.019.';
+    ? 'Tudo OK: o resultado acumulado do periodo esta de acordo com as regras de apuracao.'
+    : 'Tudo OK: o resultado liquido ajustado e suficiente para cobrir os lucros distribuidos no periodo.';
 
   if (hasMissingRows) {
-    message = 'Atenção: não foi possível localizar todas as contas necessárias para a comparação.';
+    message = 'Atencao: nao foi possivel localizar todas as contas contabeis necessarias para efetuar a conciliacao.';
   } else if (comparableBaseValue < comparableTargetValue) {
-    message = shouldUseFallback
-      ? 'Atenção: a soma das contas 3 e 6 está menor que o S. Atual da conta 2.4.13.'
-      : 'Atenção: a soma das contas 3, 6 e 2.4.13 está menor que o S. Atual da conta 1.1.04.019.';
+    message = 'Atencao: o resultado liquido ajustado e insuficiente para fazer frente aos lucros distribuidos no periodo.';
   }
 
   return {
@@ -379,13 +377,13 @@ function buildAnalysis1(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis1',
-    title: 'Clientes com Saldo Atual Baixo',
-    intro: 'Mostra a conta 1.1.02 (Clientes) apenas quando o S. Atual estiver com natureza D e valor menor que 10,00.',
+    title: 'Clientes com Saldo Devedor Baixo',
+    intro: 'Alerta quando a conta sintetica de Clientes (1.1.02) encerra com saldo devedor irrisorio (abaixo de R$ 10,00).',
     message: clientRow
       ? isAttention
-        ? 'Atenção: a conta 1.1.02 (CLIENTES) está com S. Atual menor que 10 e natureza D.'
-        : 'Tudo OK: a conta 1.1.02 (CLIENTES) não está com S. Atual menor que 10D.'
-      : 'Atenção: a conta 1.1.02 (CLIENTES) não foi localizada no PDF.',
+        ? 'Atencao: a conta sintetica 1.1.02 (Clientes) esta com saldo devedor final menor que R$ 10,00.'
+        : 'Tudo OK: o saldo devedor da conta 1.1.02 (Clientes) esta acima do limite residual de R$ 10,00.'
+      : 'Atencao: a conta 1.1.02 (CLIENTES) nao foi localizada no PDF.',
     rows: isAttention && clientRow ? [clientRow] : [],
     isAttention: !clientRow || isAttention
   };
@@ -404,14 +402,14 @@ function buildAnalysis2(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis2',
-    title: 'Cliente Pessoa Física Fora da Regra',
-    intro: 'Procura a linha Cliente Pessoa Física com Cod. R. 142 e alerta quando S. Anterior ou S. Atual não estão zerados, ou quando Débito e Crédito são diferentes.',
+    title: 'Cliente Pessoa Fisica Fora da Regra',
+    intro: 'Monitora a conta transitoria "Cliente Pessoa Fisica" (Cod. R. 142) e gera alerta caso ela apresente saldo anterior/atual em aberto ou divergencia de lancamentos no periodo.',
     message:
       matchedRows.length === 0
-        ? 'Atenção: nenhuma linha com nome Cliente Pessoa Física e Cod. R. 142 foi localizada.'
+        ? 'Atencao: nenhuma linha com nome Cliente Pessoa Fisica e Cod. R. 142 foi localizada.'
         : flaggedRows.length > 0
-          ? 'Atenção: foram encontradas linhas de Cliente Pessoa Física com Cod. R. 142 fora da regra.'
-          : 'Tudo OK: as linhas de Cliente Pessoa Física com Cod. R. 142 seguem as regras informadas.',
+          ? 'Atencao: a conta Cliente Pessoa Fisica (Cod. R. 142) apresenta saldos em aberto ou movimentacoes divergentes de debito/credito.'
+          : 'Tudo OK: a conta Cliente Pessoa Fisica (Cod. R. 142) esta devidamente zerada e sem divergencias de lancamentos.',
     rows: flaggedRows,
     isAttention: matchedRows.length === 0 || flaggedRows.length > 0
   };
@@ -437,13 +435,13 @@ function buildAnalysis3(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis3',
-    title: 'Conciliação Clientes x Receitas Operacionais',
-    intro: 'Compara o Débito da conta 1.1.02 (Clientes) com a soma dos Créditos das linhas de Cod. R. 2652, 2700 e 2603.',
+    title: 'Cruzamento de Clientes vs. Faturamento',
+    intro: 'Compara os lancamentos a debito na conta de Clientes (1.1.02) contra o faturamento operacional bruto (credito das receitas de vendas e servicos - Cod. R. 2652, 2700 e 2603).',
     message: isBalanced
-      ? 'Tudo OK: o Débito da conta 1.1.02 está igual à soma dos Créditos de Vendas de Mercadorias (Cod. R. 2652), Prestação de Serviços (Cod. R. 2700) e Vendas de Produtos (Cod. R. 2603).'
+      ? 'Tudo OK: os debitos na conta de Clientes (1.1.02) estao perfeitamente conciliados com o faturamento bruto das receitas do periodo.'
       : hasMissingRows
-      ? 'Atenção: não foi possível localizar a conta 1.1.02 e/ou as linhas de Cod. R. 2652, 2700 e 2603 para comparação.'
-      : 'Atenção: o Débito da conta 1.1.02 difere da soma dos Créditos de Vendas de Mercadorias (Cod. R. 2652), Prestação de Serviços (Cod. R. 2700) e Vendas de Produtos (Cod. R. 2603).',
+      ? 'Atencao: nao foi possivel localizar a conta 1.1.02 e/ou as linhas de Cod. R. 2652, 2700 e 2603 para comparacao.'
+      : 'Atencao: o total de lancamentos a debito na conta 1.1.02 diverge do faturamento operacional bruto apurado.',
     rows: calculationRows,
     isAttention,
     calculation: {
@@ -471,12 +469,12 @@ function buildAnalysis4(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis4',
-    title: 'Clientes com Saldo Residual',
-    intro: 'Mostra contas da família 1.1.02 quando o S. Atual estiver com natureza D, maior que 0 e menor ou igual a 10,00.',
+    title: 'Clientes com Saldo Devedor Residual',
+    intro: 'Identifica subcontas individuais de clientes (familia 1.1.02) com saldo devedor em aberto muito baixo (de ate R$ 10,00), sugerindo pendencias de arredondamento.',
     message:
       clientRows.length > 0
-        ? 'Atenção: foram encontrados Clientes e/ou subitens com S. Atual maior que 0 e menor ou igual a 10D.'
-        : 'Tudo OK: não foram encontrados Clientes ou subitens com S. Atual entre 0 e 10D.',
+        ? 'Atencao: foram identificadas subcontas de clientes com saldos devedores residuais irrisorios.'
+        : 'Tudo OK: nenhuma subconta de cliente apresenta saldo devedor residual.',
     rows: clientRows,
     isAttention: clientRows.length > 0
   };
@@ -489,12 +487,12 @@ function buildAnalysis5(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis5',
-    title: 'Clientes sem Crédito no Período',
-    intro: 'Mostra contas da família 1.1.02 quando S. Anterior e Débito são maiores que zero e o Crédito está zerado.',
+    title: 'Clientes sem Recebimento de Parcelas',
+    intro: 'Aponta subcontas de clientes (familia 1.1.02) que possuiam saldo anterior e registraram novos faturamentos (debito), porem nao registraram nenhum recebimento (credito zerado).',
     message:
       flaggedRows.length > 0
-        ? 'Atenção: foram encontrados Clientes e/ou subitens com S. Anterior e Débito maiores que zero e Crédito zerado.'
-        : 'Tudo OK: não foram encontrados Clientes ou subitens nesta condição.',
+        ? 'Atencao: existem contas de clientes com faturamento ativo mas sem registro de recebimento/credito no periodo.'
+        : 'Tudo OK: todas as contas de clientes ativas registraram recebimentos ou baixas no periodo.',
     rows: flaggedRows,
     isAttention: flaggedRows.length > 0
   };
@@ -511,12 +509,12 @@ function buildAnalysis6(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis6',
-    title: 'Fornecedores sem Débito no Período',
-    intro: 'Mostra contas da família 2.1.03 quando S. Anterior, Crédito e S. Atual são maiores que zero e o Débito está zerado.',
+    title: 'Fornecedores sem Pagamentos Efetuados',
+    intro: 'Identifica contas do passivo de fornecedores (familia 2.1.03) com obrigacoes anteriores que registraram novas compras a prazo (credito), mas nenhum pagamento (debito zerado).',
     message:
       flaggedRows.length > 0
-        ? 'Atenção: foram encontrados Fornecedores e/ou subitens com Débito zerado e S. Anterior, Crédito e S. Atual positivos.'
-        : 'Tudo OK: não foram encontrados Fornecedores ou subitens nesta condição.',
+        ? 'Atencao: existem contas de fornecedores ativas sem qualquer registro de pagamento/debito no periodo.'
+        : 'Tudo OK: as contas de fornecedores ativas registraram pagamentos ou baixas no periodo.',
     rows: flaggedRows,
     isAttention: flaggedRows.length > 0
   };
@@ -531,15 +529,15 @@ function buildAnalysis7(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis7',
-    title: 'Validação Estoques x Fornecedores',
-    intro: 'Compara o Débito da conta 1.1.08 com o Crédito da conta 2.1.03 e alerta quando Estoques fica maior que Fornecedores.',
+    title: 'Validacao de Estoques vs. Fornecedores',
+    intro: 'Compara as entradas no estoque (debitos na conta 1.1.08) com os lancamentos de compras a prazo (credito de fornecedores 2.1.03) para monitorar divergencias de escrituracao.',
     message: missingSupplier
-      ? 'Atenção: não foi possível localizar a conta 2.1.03 para comparação.'
+      ? 'Atencao: nao foi possivel localizar a conta 2.1.03 para comparacao.'
       : missingStock
-        ? 'Tudo OK: a conta 1.1.08 não foi localizada, então este relatório pode permanecer oculto.'
+        ? 'Tudo OK: a conta 1.1.08 nao foi localizada, entao este relatorio pode permanecer oculto.'
       : isAttention
-        ? 'Atenção: o Débito da conta 1.1.08 está maior que o Crédito da conta 2.1.03.'
-        : 'Tudo OK: o Débito da conta 1.1.08 não está maior que o Crédito da conta 2.1.03.',
+        ? 'Atencao: as entradas em estoques (1.1.08) superam os registros de compras a prazo em fornecedores (2.1.03).'
+        : 'Tudo OK: a movimentacao de estoques nao excede os registros de compras a prazo em fornecedores.',
     rows: !missingStock && isAttention ? [stockRow, supplierRow].filter(Boolean) as LedgerLine[] : [],
     isAttention
   };
@@ -555,12 +553,12 @@ function buildAnalysis8(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis8',
-    title: 'Fornecedores com Saldo Residual',
-    intro: 'Mostra contas da família 2.1.03 quando o S. Atual estiver com natureza C, maior que 0 e menor ou igual a 10,00.',
+    title: 'Fornecedores com Saldo Credor Residual',
+    intro: 'Lista subcontas individuais de fornecedores (familia 2.1.03) com saldo credor em aberto muito baixo (de ate R$ 10,00), que indicam pendencias de arredondamento.',
     message:
       supplierRows.length > 0
-        ? 'Atenção: foram encontrados Fornecedores e/ou subitens com S. Atual maior que 0 e menor ou igual a 10C.'
-        : 'Tudo OK: não foram encontrados Fornecedores ou subitens com S. Atual entre 0 e 10C.',
+        ? 'Atencao: foram encontradas subcontas de fornecedores com saldos credores residuais irrisorios.'
+        : 'Tudo OK: nenhuma subconta de fornecedor apresenta saldo credor residual.',
     rows: supplierRows,
     isAttention: supplierRows.length > 0
   };
@@ -573,12 +571,12 @@ function buildAnalysis9(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis9',
-    title: 'Fornecedores com Crédito sem Débito',
-    intro: 'Mostra contas da família 2.1.03 quando S. Anterior e Crédito são maiores que zero e o Débito está zerado.',
+    title: 'Provisao de Fornecedores sem Amortizacao',
+    intro: 'Detecta subcontas de fornecedores (familia 2.1.03) com saldo anterior que registraram compras/provisoes (credito), mas sem registros de liquidacao/debito no periodo.',
     message:
       flaggedRows.length > 0
-        ? 'Atenção: foram encontrados Fornecedores e/ou subitens com S. Anterior e Crédito maiores que zero e Débito zerado.'
-        : 'Tudo OK: não foram encontrados Fornecedores ou subitens nesta condição.',
+        ? 'Atencao: existem fornecedores com novos lancamentos de compras sem registro de pagamento no periodo.'
+        : 'Tudo OK: todas as contas de fornecedores com compras tambem registraram pagamentos ou baixas.',
     rows: flaggedRows,
     isAttention: flaggedRows.length > 0
   };
@@ -611,24 +609,24 @@ function buildAnalysis10(rows: LedgerLine[]): AnalysisReport {
     : [];
 
   let message =
-    'Tudo OK: o CMV liquido do Cod. R. 3001 nao ultrapassa a soma das receitas dos Cod. R. 2603, 2652 e 2700.';
+    'Tudo OK: o custo de vendas (CMV) liquido esta condizente com o faturamento bruto.';
 
   if (hasMissingRows) {
     message =
       `Atencao: base incompleta para o calculo do CMV/Receita. Cod. R. ausente(s): ${missingCodes.join(', ')}.`;
   } else if (hasZeroRevenue) {
     message =
-      'Atencao: a soma das receitas dos Cod. R. 2603, 2652 e 2700 ficou zerada, entao o percentual de CMV nao pode ser calculado.';
+      'Atencao: faturamento zerado no periodo, impossibilitando o calculo da margem de custo.';
   } else if (percentage > 1) {
     message =
-      'Atencao: o CMV liquido do Cod. R. 3001 esta maior que a soma das receitas dos Cod. R. 2603, 2652 e 2700.';
+      'Atencao: o CMV liquido esta maior que as receitas consideradas, indicando margem bruta negativa ou erro de lancamento.';
   }
 
   return {
     kind: 'analysis10',
-    title: 'CMV x Receita Mercadorias',
+    title: 'Margem de Custo de Vendas (CMV / Receitas)',
     intro:
-      'Calcula (Debitos do Cod. R. 3001 menos Creditos do Cod. R. 3001) dividido pela soma dos Creditos dos Cod. R. 2603, 2652 e 2700.',
+      'Analisa a proporcao do custo liquido de mercadorias vendidas (Cod. R. 3001) sobre o total do faturamento bruto (Cod. R. 2603, 2652 e 2700) para monitorar margens brutas negativas ou lancamentos improprios.',
     message,
     rows: calculationRows,
     isAttention,
@@ -661,9 +659,9 @@ function buildAnalysis11(rows: LedgerLine[]): AnalysisReport {
   if (missingRoots) {
     return {
       kind: 'analysis11',
-      title: 'Depreciacao x Bens',
+      title: 'Consistencia de Depreciacao do Imobilizado',
       intro:
-        'Compara os valores de S. Atual dos bens dentro de IMOBILIZADO com suas respectivas contas de depreciacao acumulada, excluindo IMOBILIZADO EM ANDAMENTO.',
+        'Cruza os saldos atuais dos bens do Ativo Imobilizado (grupo 1.2.05) com as suas respectivas contas de depreciacao acumulada equivalentes (grupo 1.2.05.007), desconsiderando obras em andamento.',
       message: 'Atencao: nao foi possivel localizar as contas raiz de IMOBILIZADO e/ou (-)DEPRECIACAO/AMORTIZACAO/EXAUSTAO ACUMULADA.',
       rows: [],
       depreciationPairs: [],
@@ -755,13 +753,13 @@ function buildAnalysis11(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis11',
-    title: 'Depreciacao x Bens',
+    title: 'Consistencia de Depreciacao do Imobilizado',
     intro:
-      'Compara os valores de S. Atual de cada bem dentro de IMOBILIZADO com a sua depreciacao equivalente, ignorando C/D e parenteses, e excluindo IMOBILIZADO EM ANDAMENTO.',
+      'Cruza os saldos atuais dos bens do Ativo Imobilizado (grupo 1.2.05) com as suas respectivas contas de depreciacao acumulada equivalentes (grupo 1.2.05.007), desconsiderando obras em andamento.',
     message:
       depreciationPairs.length > 0
-        ? 'Atencao: foram encontradas depreciacoes maiores que os bens equivalentes e/ou depreciacoes sem bem correspondente.'
-        : 'Tudo OK: nao foram encontradas depreciacoes maiores que os bens equivalentes nem depreciacoes sem bem correspondente.',
+        ? 'Atencao: foram identificados bens com depreciacao acumulada superior ao valor historico ou contas de depreciacao sem bens equivalentes.'
+        : 'Tudo OK: todas as depreciacoes possuem bens equivalentes e os limites de depreciacao acumulada estao regulares.',
     rows: flaggedRows,
     depreciationPairs,
     isAttention: depreciationPairs.length > 0,
@@ -785,13 +783,13 @@ function buildAnalysis12(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis12',
-    title: 'Despesas Credoras na Classe 3',
+    title: 'Despesas Credoras na Classe de Resultado',
     intro:
-      'Verifica contas da classe 3 que deveriam encerrar com S. Atual em D, excluindo os grupos 3, 3.1, 3.1.02, 3.1.03, 3.1.06 e 3.9, com seus respectivos filhos.',
+      'Identifica contas do grupo de despesas (Classe 3) com saldo credor atipico no encerramento (exceto deducoes regulamentares de receitas e impostos).',
     message:
       flaggedRows.length > 0
-        ? 'Atencao: foram encontradas contas da classe 3 com S. Atual credor fora dos grupos de excecao definidos.'
-        : 'Tudo OK: nao foram encontradas contas da classe 3 com S. Atual credor fora dos grupos de excecao definidos.',
+        ? 'Atencao: foram encontradas contas de despesa com saldo credor atipico fora dos grupos de excecao regulamentares.'
+        : 'Tudo OK: todas as despesas encerraram com saldo devedor ou integram grupos de excecoes permitidos.',
     rows: flaggedRows,
     isAttention: flaggedRows.length > 0
   };

@@ -317,9 +317,11 @@ function ComparisonPanel({ company }: { company: CompanyReport }) {
         </div>
 
         <div className={`p-6 rounded-2xl flex flex-col items-center justify-center text-center shadow-md border ${
-          isAttention ? 'bg-gradient-to-br from-error/90 to-error text-error-foreground border-error' : 'bg-gradient-to-br from-success to-success/80 text-success-foreground border-success/20'
+          isAttention 
+            ? 'bg-error text-error-foreground border-error shadow-lg shadow-error/10' 
+            : 'bg-success text-success-foreground border-success/20 shadow-lg shadow-success/10'
         }`}>
-          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 shadow-inner">
+          <div className="w-16 h-16 rounded-full bg-white/25 flex items-center justify-center mb-4 shadow-inner">
             <span className="material-symbols-outlined text-[32px]">{isAttention ? 'analytics' : 'verified'}</span>
           </div>
           <h4 className="text-sm font-bold uppercase tracking-wider opacity-90">Score de Precisão</h4>

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import packageJson from '../../package.json';
+import { useAuth } from '../hooks/useAuth';
 
 interface SidebarProps {
   currentView: 'main' | 'privacy' | 'security' | 'docs';
   onNavigate: (view: 'main' | 'privacy' | 'security' | 'docs') => void;
+  onNavigateToAccount: () => void;
 }
 
-export function Sidebar({ currentView, onNavigate }: SidebarProps) {
+export function Sidebar({ currentView, onNavigate, onNavigateToAccount }: SidebarProps) {
+  const { user } = useAuth();
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
     if (saved) return saved === 'dark';
@@ -26,9 +29,9 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
 
   const navItems = [
     { id: 'main', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'privacy', label: 'Privacy Policy', icon: 'policy' },
-    { id: 'security', label: 'Data Security', icon: 'security' },
-    { id: 'docs', label: 'Documentation', icon: 'description' },
+    { id: 'privacy', label: 'Privacidade', icon: 'policy' },
+    { id: 'security', label: 'Segurança', icon: 'security' },
+    { id: 'docs', label: 'Instruções', icon: 'description' },
   ] as const;
 
   return (
@@ -58,7 +61,25 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-surface-border flex flex-col gap-4">
+      <div className="p-4 border-t border-surface-border flex flex-col gap-2">
+        {/* Botão de acesso à conta do usuário */}
+        {user && (
+          <button
+            onClick={onNavigateToAccount}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface-border/50 hover:text-foreground transition-all w-full text-left"
+          >
+            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-bold text-primary">{user.name.charAt(0).toUpperCase()}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+            </div>
+            <span className="material-symbols-outlined text-[16px] ml-auto flex-shrink-0">manage_accounts</span>
+          </button>
+        )}
+
+        {/* Alternância de tema */}
         <button
           onClick={() => setIsDark(!isDark)}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface-border/50 hover:text-foreground transition-all w-full"
@@ -68,7 +89,8 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
           </span>
           {isDark ? 'Modo Claro' : 'Modo Escuro'}
         </button>
-        <div className="text-xs text-muted-foreground text-center">
+
+        <div className="text-xs text-muted-foreground text-center pt-1">
           v{packageJson.version}
         </div>
       </div>

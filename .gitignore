@@ -39,3 +39,8 @@ __pycache__/
 
 # Others
 plano de contas.xls
+
+.vercel
+.env*
+acessos.xlsx
+seed_local.ts

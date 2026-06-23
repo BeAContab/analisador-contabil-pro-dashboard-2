@@ -1,4 +1,54 @@
-﻿# Changelog
+# Changelog
+
+## 1.0.29 - 2026-06-23
+### Adicionado
+- Botão flutuante para alternância de tema Claro/Escuro na Landing Page com persistência no navegador.
+- Instruções sobre compatibilidade de colunas com o sistema Athenas3000 no Dashboard.
+- Aviso de exclusividade para Athenas3000 na Landing Page.
+- Instruções passo a passo para configurar a chave de API da IA (Gemini) dentro do menu de Instruções do Dashboard.
+
+### Corrigido
+- Ajuste de contraste das cores no card de Score de Precisão de Conciliação no tema claro (branco no branco) e escuro (vermelho escuro no preto).
+
+### Segurança (Security)
+- **Stripe Webhook:** Desabilitado o `bodyParser` na Vercel e implementada leitura direta em buffer do body da requisição, resolvendo falhas de validação de assinatura (`stripe-signature`).
+- **Cookies de Sessão (JWT):** Adicionada a flag `Secure` dinamicamente para os cookies emitidos em ambiente de produção.
+- **Proteção de Credenciais:** Removidas as senhas hardcoded em texto puro dos scripts de seed (`api/db/seed.ts` e `seed_local.ts`), substituídas por derivação determinística `HMAC-SHA256` utilizando `SEED_SECRET`.
+- **Gitignore:** Adicionados arquivos de credenciais de ambiente local (`acessos.xlsx`, `seed_local.ts`) para evitar commits acidentais.
+
+## 1.0.28 - 2026-06-23
+- Corrigido o contraste e a legibilidade do card de Score de Precisão da conciliação do resultado no arquivo `src/components/CompanyCard.tsx`. Substituição dos gradientes transparentes (que falhavam com variáveis hexadecimais do Tailwind) por fundos sólidos adequados para os modos claro e escuro.
+- Renomeada a opção do menu na barra lateral de "Documentação" para "Instruções" no arquivo `src/components/Sidebar.tsx`.
+- Reestruturada a página de documentação no arquivo `src/components/LocalProcessingDoc.tsx` para servir como guia de instruções, detalhando a compatibilidade obrigatória com o sistema Athenas3000 (com listagem das 7 colunas requeridas) e o tutorial passo a passo sobre como obter e configurar a chave de API do Gemini no Google AI Studio.
+- Inseridas informações sobre a exclusividade de balancetes do sistema Athenas3000 na seção Hero da Landing Page (`src/components/LandingPage.tsx`).
+
+## 1.0.27 - 2026-06-23
+- Adicionada a exibição explícita do status de assinatura contábil ("ASSINATURA ATIVA" ou "ASSINATURA INATIVA") no dropdown do cabeçalho de perfil na Landing Page.
+- Alterado o comportamento do botão "Ir para o Dashboard" no dropdown de perfil da Landing Page: direciona para o dashboard contábil se o usuário possuir plano ativo, ou fecha o menu e realiza scroll suave para a seção de planos e preços se a assinatura estiver inativa.
+
+## 1.0.26 - 2026-06-23
+- Corrigida a falha de controle de acesso (paywall) na função `handleAuthSuccess` do `src/App.tsx`, garantindo que usuários logados sem assinatura ativa sejam redirecionados corretamente para o paywall e não para a área principal do dashboard.
+- Habilitado o redirecionamento correto em tempo de execução no cabeçalho da Landing Page ao clicar no botão "Ir para o Dashboard", roteando de forma condicional para a área principal (com assinatura) ou paywall (sem assinatura).
+- Ajustado o logo do cabeçalho da Landing Page para funcionar como botão clicável que dá scroll suave para o topo da página.
+- Removido o rótulo "Conta ativa" do menu suspenso de perfil para evitar ambiguidades com o status da assinatura do plano.
+
+## 1.0.25 - 2026-06-23
+- Criada a rota de API backend `/api/auth/update` para alteração segura de nome e senha com validação bcrypt e sessão JWT no banco Turso.
+- Implementado menu de perfil (dropdown) animado no cabeçalho da Landing Page para usuários autenticados, fornecendo atalhos para dashboard, edição de nome, alteração de senha e logout.
+- Corrigida exibição de links de "Entrar" e "Criar conta" no rodapé da Landing Page para usuários já logados.
+- Adicionadas funcionalidades de "Editar Nome" e "Alterar Senha" com modais overlays flutuantes de forma consistente tanto na Landing Page quanto no painel de gerenciamento de conta (`AccountPanel`).
+
+## 1.0.24 - 2026-06-23
+- Habilitada a aplicação de códigos promocionais e cupons de desconto (`allow_promotion_codes: true`) no Stripe Checkout na rota `api/stripe/checkout.ts`.
+
+## 1.0.23 - 2026-06-23
+- Corrigida a parametrização dos identificadores do Stripe nos arquivos de configuração `.env`, `.env.local` e `.env.development.local`. Sincronização dos Price IDs correspondentes (`price_...`) para sanar falha no redirecionamento do checkout de assinaturas.
+
+## 1.0.22 - 2026-06-22
+- Otimização completa da terminologia contábil em todas as 15 regras de análise de balancete do sistema.
+- Substituição de nomenclaturas de fórmulas matemáticas por termos técnicos da contabilidade brasileira em relatórios, títulos de abas e tabelas de exportação (ex: "Inversão de Saldo Contábil" em vez de "Saldos Invertidos", "Clientes com Saldo Devedor Residual" em vez de "Clientes com Saldo Residual", "Cruzamento de Clientes vs. Faturamento" em vez de "Conciliação Clientes x Receitas Operacionais").
+- Atualização das introduções explicativas de relatórios, mensagens de sucesso, avisos de inconsistência e orientações de ações corretivas correspondentes nos arquivos `src/utils/reports.ts` e `src/utils/parser.ts`.
+- Ajuste na base de conhecimento e lógica do assistente virtual (Chatbot) no arquivo `src/utils/chatbot.ts` para que responda e recomende análises utilizando a nova terminologia de negócios contábeis.
 
 ## 1.0.21 - 2026-05-29
 - Removido o fluxo legado em Python/Streamlit, mantendo o projeto focado em React + Vite para deploy na Vercel.
