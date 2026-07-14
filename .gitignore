@@ -37,5 +37,9 @@ __pycache__/
 *.sqlite3
 *.sqlite-journal
 
+# Scripts locais sensiveis (seed de usuarios, credenciais, etc.)
+seed_local.ts
+*_local.ts
+
 # Others
 plano de contas.xls

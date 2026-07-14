@@ -1,47 +1,71 @@
-# Analisador Contabil Pro - Dashboard v2
+# 📊 Analisador Contábil Pro
 
-Aplicacao web para analise automatizada de balancetes contabeis em PDF, com relatorios de ocorrencias, exportacao em Excel/PDF e assistente de IA integrado.
+**Transforme balancetes em PDF em insights contábeis em segundos — direto no navegador, sem enviar dados para nenhum servidor.**
 
-## Funcionalidades
+Chega de conferir balancetes linha por linha. O Analisador Contábil Pro faz upload em lote dos seus PDFs, aplica automaticamente as principais regras de consistência contábil e devolve um relatório executivo pronto para o cliente, com exportação em Excel e PDF.
 
-- Upload drag and drop de multiplos PDFs de balancetes.
-- Analise automatizada de saldos invertidos, contas sem movimentacao, CMV x Receita e outras regras contabeis.
-- Resumo executivo com cards de status, relatorios afetados e total de ocorrencias.
-- Drill-down por empresa com tabelas ordenaveis e paginadas.
-- Tema claro/escuro com persistencia em `localStorage`.
-- Assistente de IA com Gemini ou modo local.
-- Exportacao de relatorios em PDF e Excel.
-- Processamento dos PDFs no navegador do usuario.
+---
 
-## Stack Tecnologica
+## ✨ Por que usar
+
+- ⚡ **Rápido** — analise dezenas de balancetes de uma vez, com processamento local no navegador (nenhum arquivo sobe para servidores externos).
+- 🔍 **Preciso** — detecta saldos invertidos, contas sem movimentação, inconsistências entre CMV e Receita e outras regras contábeis relevantes.
+- 📈 **Visual** — resumo executivo com cards de status, contagem de ocorrências e drill-down por empresa.
+- 🤖 **Inteligente** — assistente de IA (Gemini) integrado para tirar dúvidas sobre os achados, com fallback em modo local.
+- 📤 **Pronto para entrega** — exporte relatórios formatados em PDF e Excel com um clique.
+- 🌓 **Confortável** — tema claro/escuro com preferência salva automaticamente.
+- 🔒 **Privado por padrão** — os PDFs são processados no navegador do usuário; nada é enviado para nossos servidores.
+
+---
+
+## 🖥️ Funcionalidades
+
+| Recurso | Descrição |
+|---|---|
+| 📁 Upload em lote | Drag and drop de múltiplos PDFs de balancetes de uma só vez |
+| ✅ Análise automatizada | Saldos invertidos, contas sem movimentação, CMV x Receita e outras regras contábeis |
+| 📋 Resumo executivo | Cards de status, relatórios afetados e total de ocorrências |
+| 🏢 Drill-down por empresa | Tabelas ordenáveis e paginadas para cada empresa analisada |
+| 🎨 Tema claro/escuro | Persistência automática via `localStorage` |
+| 💬 Assistente de IA | Integração com Gemini ou modo local, sem dependência obrigatória de API |
+| 📑 Exportação | Relatórios em PDF (jsPDF) e Excel (SheetJS) |
+| 🛡️ Processamento local | Os PDFs nunca saem do navegador do usuário |
+
+---
+
+## 🛠️ Stack Tecnológica
 
 | Tecnologia | Uso |
 |---|---|
-| React 18 | Interface web |
-| Vite 6 | Build, desenvolvimento local e deploy Vercel |
-| TypeScript 5.7 | Tipagem da aplicacao |
-| Tailwind CSS 3.4 | Estilos e tokens visuais |
-| pdf.js | Leitura dos PDFs no navegador |
-| jsPDF | Exportacao de relatorios em PDF |
-| SheetJS (`xlsx`) | Exportacao de dados em Excel |
+| ⚛️ React 18 | Interface web |
+| ⚡ Vite 6 | Build, desenvolvimento local e deploy Vercel |
+| 🔷 TypeScript 5.7 | Tipagem da aplicação |
+| 🎨 Tailwind CSS 3.4 | Estilos e tokens visuais |
+| 📄 pdf.js | Leitura dos PDFs no navegador |
+| 🧾 jsPDF | Exportação de relatórios em PDF |
+| 📊 SheetJS (`xlsx`) | Exportação de dados em Excel |
 
-## Como Executar
+---
+
+## 🚀 Como Executar
 
 ```bash
 npm install
 npm run dev
 ```
 
-O app fica disponivel em `http://localhost:5173/`.
+O app fica disponível em `http://localhost:5173/`.
 
-Para validar o build de producao usado pela Vercel:
+Para validar o build de produção usado pela Vercel:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Deploy Vercel
+---
+
+## ☁️ Deploy Vercel
 
 O projeto usa somente React + Vite para deploy.
 
@@ -51,7 +75,9 @@ Config atual em `vercel.json`:
 - Build command: `npm run build`
 - Output directory: `dist`
 
-## Variaveis de Ambiente
+---
+
+## 🔑 Variáveis de Ambiente
 
 Crie um arquivo `.env.local` na raiz do projeto com base em `.env.example`:
 
@@ -59,9 +85,11 @@ Crie um arquivo `.env.local` na raiz do projeto com base em `.env.example`:
 VITE_GEMINI_API_KEY=cole_sua_chave_aqui
 ```
 
-A chave do Gemini e opcional. Se o usuario informar a chave no assistente, ela fica salva no `localStorage` do navegador daquele usuario e sera reaproveitada em acessos futuros no mesmo perfil do navegador.
+A chave do Gemini é opcional. Se o usuário informar a chave no assistente, ela fica salva no `localStorage` do navegador daquele usuário e será reaproveitada em acessos futuros no mesmo perfil do navegador.
 
-## Estrutura do Projeto
+---
+
+## 📂 Estrutura do Projeto
 
 ```text
 src/
@@ -77,6 +105,8 @@ vite.config.ts      Configuracao do Vite
 package.json        Scripts e dependencias Node.js
 ```
 
-## Licenca
+---
+
+## 📜 Licença
 
 Projeto privado. Todos os direitos reservados.
