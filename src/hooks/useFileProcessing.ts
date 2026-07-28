@@ -1,6 +1,6 @@
 import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CompanyReport } from '../types';
-import { parsePdfFile } from '../utils/parser';
+import { ParseCancelledError, createParserClient } from '../utils/parserClient';
 
 // Limites defensivos para nao travar a thread principal com um lote
 // desproporcional. Balancetes reais (ver arquivos_de_exemplo/) ficam na casa
@@ -21,12 +21,19 @@ export function useFileProcessing() {
   // render anterior, entao o guard de reentrada precisa de uma ref.
   const isProcessingRef = useRef(false);
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Um unico cliente/worker por instancia do hook, criado sob demanda no
+  // primeiro parse e encerrado no unmount.
+  const parserRef = useRef<ReturnType<typeof createParserClient> | null>(null);
+  if (parserRef.current === null) {
+    parserRef.current = createParserClient();
+  }
 
   useEffect(() => {
     return () => {
       if (resetTimeoutRef.current !== null) {
         clearTimeout(resetTimeoutRef.current);
       }
+      parserRef.current?.dispose();
     };
   }, []);
 
@@ -125,8 +132,15 @@ export function useFileProcessing() {
       for (const [index, file] of files.entries()) {
         setProcessingIndex(index + 1);
         setProcessingFileName(file.name);
-        parsed.push(await parsePdfFile(file));
+        // O parsing acontece no worker; a UI so aguarda o resultado.
+        parsed.push(await parserRef.current!.parse(file));
         setReports([...parsed]);
+      }
+    } catch (error) {
+      if (error instanceof ParseCancelledError) {
+        setMessage('Processamento cancelado.');
+      } else {
+        setMessage(error instanceof Error ? error.message : 'Falha ao processar os arquivos.');
       }
     } finally {
       isProcessingRef.current = false;
@@ -139,11 +153,22 @@ export function useFileProcessing() {
     }
   }
 
+  /**
+   * Interrompe o processamento em andamento. So e possivel porque o parsing
+   * saiu da thread principal: encerrar o worker para o trabalho de verdade,
+   * enquanto na main thread um loop preso em CPU seguiria ate o fim.
+   */
+  function cancelProcessing() {
+    if (!isProcessingRef.current) return;
+    parserRef.current?.cancel();
+  }
+
   function clearAll() {
     if (resetTimeoutRef.current !== null) {
       clearTimeout(resetTimeoutRef.current);
       resetTimeoutRef.current = null;
     }
+    parserRef.current?.cancel();
     setFiles([]);
     setReports([]);
     setMessage('');
@@ -167,6 +192,7 @@ export function useFileProcessing() {
     handleDrop,
     removeFile,
     processFiles,
+    cancelProcessing,
     clearAll
   };
 }

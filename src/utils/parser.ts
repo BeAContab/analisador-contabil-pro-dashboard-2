@@ -163,6 +163,10 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
 }
 
 function yieldToBrowser(): Promise<void> {
+  // Dentro de um Web Worker nao ha `window` nem UI para desbloquear: ceder a
+  // thread so adicionaria um turno de event loop por pagina. O yield continua
+  // valendo no fallback de thread principal (ver parserClient.ts).
+  if (typeof window === 'undefined') return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 

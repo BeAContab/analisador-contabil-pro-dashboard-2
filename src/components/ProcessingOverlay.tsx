@@ -5,12 +5,12 @@ interface ProcessingOverlayProps {
   total: number;
   percent: number;
   fileName: string;
+  onCancel: () => void;
 }
 
-export function ProcessingOverlay({ index, total, percent, fileName }: ProcessingOverlayProps) {
-  // Sem elementos focaveis dentro: o foco vai para o proprio container (evita
-  // que o Tab escape para o conteudo atras do overlay enquanto processa) e
-  // volta ao elemento anterior quando o processamento termina.
+export function ProcessingOverlay({ index, total, percent, fileName, onCancel }: ProcessingOverlayProps) {
+  // O botao de cancelar e o unico elemento focavel: o foco cai nele ao abrir e
+  // o Tab fica preso no overlay.
   const overlayRef = useFocusTrap<HTMLDivElement>(true);
 
   return (
@@ -45,6 +45,14 @@ export function ProcessingOverlay({ index, total, percent, fileName }: Processin
             style={{ width: `${percent}%` }}
           />
         </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-surface-border bg-surface px-5 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Cancelar
+        </button>
       </div>
     </div>
   );

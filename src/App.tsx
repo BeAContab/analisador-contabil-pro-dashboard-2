@@ -38,6 +38,7 @@ export function App() {
     handleDrop,
     removeFile,
     processFiles,
+    cancelProcessing,
     clearAll
   } = useFileProcessing();
 
@@ -152,6 +153,7 @@ export function App() {
               total={files.length}
               percent={processingPercent}
               fileName={processingFileName}
+              onCancel={cancelProcessing}
             />
           )}
         </main>

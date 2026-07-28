@@ -1,6 +1,6 @@
 # Plano de Implementação Faseado — Analisador Contábil Pro Dashboard
 
-> **Status:** Fases 1 a 5 concluídas na branch `fase-1-seguranca-privacidade`. Fase 6 pendente.
+> **Status:** ✅ **Todas as 6 fases concluídas** na branch `fase-1-seguranca-privacidade`.
 
 ## Contexto
 
@@ -113,7 +113,13 @@ Itens:
 
 ---
 
-## Fase 6 — Dívidas arquiteturais deixadas para trás (jspdf + Web Worker)
+## Fase 6 — Dívidas arquiteturais deixadas para trás (jspdf + Web Worker) ✅ CONCLUÍDA
+
+> **6A (jspdf):** `npm audit` foi de 3 para **0 vulnerabilidades**. A superfície de API usada era pequena e estável entre as majors, então a migração foi contida. Validação de regressão: baseline dos PDFs capturado **antes** do upgrade interceptando `URL.createObjectURL` (pegando o blob do `downloadPdf` real, não uma cópia do fluxo) e extraindo o texto de cada página com o próprio pdf.js — **texto e paginação idênticos** nas 6 empresas testadas (3 a 8 páginas), mais conferência visual da página renderizada. O cast de `lastAutoTable` saiu via module augmentation usando o tipo `Table` da própria lib, e `addPdfSection` passou de `options: object` para o `UserOptions` oficial. Nenhum ajuste foi necessário nas heurísticas de quebra de página (6.3), já que a paginação não mudou.
+>
+> **6B (Web Worker):** o pipeline inteiro saiu da thread principal. `parser.ts` já era livre de DOM, então foi importado no worker sem adaptação. Contrato via `CompanyReport` (structured-cloneable, sem serialização manual). Validado nos 14 balancetes: **10.329 linhas, 0 inconsistências, 2.233 não classificadas, 706 invertidas — idêntico ao baseline da Fase 2**. Travamento máximo da main thread caiu de 49ms para 18ms (ganho modesto porque o yielding da Fase 2 já mitigava parte; o ganho estrutural é não depender mais do tamanho do arquivo). O cancelamento (6.8) passou a ser possível de fato — antes um loop preso em CPU rodava até o fim — e está exposto num botão no `ProcessingOverlay`: aborta em ~126ms o que levaria ~630ms, e o cliente recria o worker sozinho na próxima chamada.
+>
+> **Bônus:** corrigido um defeito introduzido na Fase 5 — as duas instâncias de `compression()` reemitiam a saída uma da outra, gerando 30 avisos "overwrites a previously emitted file" por build. A API expõe `algorithms`, então ambos rodam numa instância só (0 avisos, mesma saída).
 
 **Modelo recomendado: Opus 5 · Esforço: Alto (~3-5 dias)**
 Justificativa: reúne os dois itens que foram deliberadamente adiados durante as Fases 1 e 2 por serem mudanças arquiteturais, não correções pontuais. Ambos tocam funcionalidade central (exportação de PDF e o motor de parsing), ambos têm alto risco de regressão silenciosa, e ambos ficam muito mais seguros depois que a suíte de testes da Fase 5 existir. Deve rodar **depois da Fase 5**.
