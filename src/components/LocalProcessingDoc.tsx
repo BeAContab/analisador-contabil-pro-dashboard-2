@@ -38,6 +38,10 @@ export function LocalProcessingDoc() {
 
           <div className="bg-surface-container-low p-lg rounded-xl border border-outline-variant mt-xl">
              <h4 className="font-label-caps text-secondary uppercase mb-md">Fluxo de Dados</h4>
+             <p className="text-body-sm text-secondary mb-md leading-relaxed">
+               As quatro etapas abaixo acontecem inteiramente no seu navegador, sem nenhuma requisição de rede. O
+               assistente de IA opcional é um passo separado, executado apenas sob autorização explícita.
+             </p>
              <div className="flex flex-col md:flex-row items-center justify-between gap-md text-center">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center font-bold">1</div>
@@ -67,6 +71,13 @@ export function LocalProcessingDoc() {
             <h4 className="font-title-sm mb-sm">Por que isso importa?</h4>
             <p className="text-body-sm opacity-90 leading-relaxed">
               Em ambientes corporativos, a segurança da informação é crítica. O processamento local elimina a necessidade de avaliações de segurança de dados complexas para provedores de nuvem externos.
+            </p>
+          </div>
+          <div className="bg-surface-container-lowest border border-outline-variant p-lg rounded-xl">
+            <h4 className="font-label-caps text-secondary mb-sm uppercase">Assistente de IA</h4>
+            <p className="text-body-sm leading-relaxed mb-md">
+              O chat com IA é opcional e desativado por padrão. Se você o ativar, um resumo pseudonimizado da análise
+              (sem CNPJ e com a razão social substituída) é enviado à API do Google. O PDF em si nunca é transmitido.
             </p>
           </div>
           <div className="bg-surface-container-lowest border border-outline-variant p-lg rounded-xl">

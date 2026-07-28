@@ -41,5 +41,11 @@ __pycache__/
 seed_local.ts
 *_local.ts
 
+# Saida gerada pelo /graphify (grafo, cache e relatorios)
+graphify-out/
+
+# Configuracao local do Claude Code (permissoes especificas da maquina)
+.claude/settings.local.json
+
 # Others
 plano de contas.xls

@@ -1,29 +1,82 @@
 import { CompanyReport } from '../types';
 import { formatNumberAsBrazilianMoney } from './format';
+import { CompanyAlias, anonymizeText, buildCompanyAliases, deanonymizeText, stripDocumentNumbers } from './anonymize';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 const GEMINI_API_KEY_STORAGE_KEY = 'gemini_api_key';
+const GEMINI_CONSENT_STORAGE_KEY = 'gemini_ai_consent';
+
+/**
+ * A chave expira sozinha para nao ficar indefinidamente exposta no navegador.
+ * Ver DataSecurity.tsx: o produto promete nao guardar nada sem acao explicita
+ * do usuario, entao o armazenamento precisa ter prazo e ser revogavel.
+ */
+export const GEMINI_API_KEY_TTL_DAYS = 30;
+const GEMINI_API_KEY_TTL_MS = GEMINI_API_KEY_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 export interface ChatTurn {
   role: 'user' | 'model';
   text: string;
 }
 
-export function getStoredGeminiApiKey(): string {
-  if (typeof window === 'undefined') return import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+interface StoredApiKey {
+  value: string;
+  savedAt: number;
+}
 
-  const persistentKey = window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY)?.trim();
-  if (persistentKey) return persistentKey;
+/**
+ * A env var so e considerada em desenvolvimento. Qualquer valor `VITE_*` e
+ * embutido em texto puro no bundle publico durante o build, entao honra-la em
+ * producao equivaleria a publicar a chave para qualquer visitante.
+ */
+function getBuildTimeApiKey(): string {
+  if (!import.meta.env.DEV) return '';
+  return import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+}
+
+function readStoredApiKey(): StoredApiKey | null {
+  const raw = window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredApiKey>;
+    if (typeof parsed?.value === 'string' && typeof parsed?.savedAt === 'number') {
+      return { value: parsed.value, savedAt: parsed.savedAt };
+    }
+  } catch {
+    // Formato antigo: a chave era gravada como string pura, sem data de validade.
+  }
+
+  const legacyValue = raw.trim();
+  if (!legacyValue) return null;
+
+  // Migra o formato antigo carimbando a data de agora para iniciar a contagem do TTL.
+  const migrated: StoredApiKey = { value: legacyValue, savedAt: Date.now() };
+  window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, JSON.stringify(migrated));
+  return migrated;
+}
+
+export function getStoredGeminiApiKey(): string {
+  if (typeof window === 'undefined') return getBuildTimeApiKey();
+
+  const stored = readStoredApiKey();
+  if (stored) {
+    if (Date.now() - stored.savedAt > GEMINI_API_KEY_TTL_MS) {
+      window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+    } else if (stored.value) {
+      return stored.value;
+    }
+  }
 
   const legacySessionKey = window.sessionStorage.getItem(GEMINI_API_KEY_STORAGE_KEY)?.trim();
   if (legacySessionKey) {
     // Migra chaves salvas no formato antigo para preservar a configuracao do usuario.
-    window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, legacySessionKey);
+    storeGeminiApiKey(legacySessionKey);
     window.sessionStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
     return legacySessionKey;
   }
 
-  return import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+  return getBuildTimeApiKey();
 }
 
 export function storeGeminiApiKey(apiKey: string) {
@@ -35,8 +88,40 @@ export function storeGeminiApiKey(apiKey: string) {
     return;
   }
 
-  window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, trimmed);
+  const payload: StoredApiKey = { value: trimmed, savedAt: Date.now() };
+  window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, JSON.stringify(payload));
   window.sessionStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+}
+
+/** Data em que a chave salva deixa de valer, ou null quando nao ha chave persistida. */
+export function getGeminiApiKeyExpiration(): Date | null {
+  if (typeof window === 'undefined') return null;
+  const stored = readStoredApiKey();
+  if (!stored?.value) return null;
+  return new Date(stored.savedAt + GEMINI_API_KEY_TTL_MS);
+}
+
+/**
+ * O envio ao Gemini so acontece apos consentimento explicito, porque e o unico
+ * fluxo do produto em que dados do balancete saem do navegador.
+ */
+export function hasGeminiConsent(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(GEMINI_CONSENT_STORAGE_KEY) === 'true';
+}
+
+export function setGeminiConsent(granted: boolean) {
+  if (typeof window === 'undefined') return;
+  if (granted) {
+    window.localStorage.setItem(GEMINI_CONSENT_STORAGE_KEY, 'true');
+    return;
+  }
+  window.localStorage.removeItem(GEMINI_CONSENT_STORAGE_KEY);
+}
+
+/** Verdadeiro apenas quando ha chave valida E consentimento registrado. */
+export function isGeminiEnabled(): boolean {
+  return Boolean(getStoredGeminiApiKey()) && hasGeminiConsent();
 }
 
 export async function generateGeminiChatReply(params: {
@@ -44,13 +129,23 @@ export async function generateGeminiChatReply(params: {
   reports: CompanyReport[];
   history: ChatTurn[];
   userMessage: string;
+  signal?: AbortSignal;
 }): Promise<string> {
-  const { apiKey, reports, history, userMessage } = params;
-  const prompt = buildGeminiPrompt(reports, userMessage);
+  const { apiKey, reports, history, userMessage, signal } = params;
+
+  // Tudo que sai daqui passa pela pseudonimizacao; a resposta e revertida no fim.
+  const aliases = buildCompanyAliases(reports);
+  const prompt = buildGeminiPrompt(reports, userMessage, aliases);
+  const safeHistory = history.map((turn) => ({
+    role: turn.role,
+    text: anonymizeText(turn.text, aliases)
+  }));
+
   const initial = await requestGemini({
     apiKey,
-    history,
-    userMessage: prompt
+    history: safeHistory,
+    userMessage: prompt,
+    signal
   });
 
   let finalText = initial.text;
@@ -61,18 +156,19 @@ export async function generateGeminiChatReply(params: {
     const continuation = await requestGemini({
       apiKey,
       history: [
-        ...history,
+        ...safeHistory,
         { role: 'user', text: prompt },
         { role: 'model', text: initial.text }
       ],
       userMessage:
-        'Continue exatamente de onde voce parou na ultima resposta. Nao reinicie a explicacao e nao repita o texto ja enviado.'
+        'Continue exatamente de onde voce parou na ultima resposta. Nao reinicie a explicacao e nao repita o texto ja enviado.',
+      signal
     });
 
     finalText = mergeGeminiResponses(initial.text, continuation.text);
   }
 
-  return finalText;
+  return deanonymizeText(finalText, aliases);
 }
 
 export function buildGeminiBootstrapReply(reports: CompanyReport[]): string {
@@ -89,6 +185,11 @@ export function buildLocalFallbackNotice(errorMessage?: string): string {
   }
 
   return `Nao consegui usar o Gemini agora. Motivo: ${errorMessage} Posso continuar no modo local enquanto isso, mantendo respostas mais cautelosas e resumidas.`;
+}
+
+/** Aviso exibido quando existe chave, mas o usuario ainda nao autorizou o envio. */
+export function buildConsentPendingNotice(): string {
+  return 'Sua chave esta salva, mas o envio de dados para o Gemini ainda nao foi autorizado. Abra as configuracoes do assistente e confirme o aviso de privacidade para ativar a IA. Ate la, sigo no modo local.';
 }
 
 function buildGeminiContents(history: ChatTurn[], userMessage: string) {
@@ -115,6 +216,7 @@ function buildSystemInstruction(): string {
     'Voce e a IA especialista do chatbot do Analisador Contabil Pro, com atuacao senior em analise de balancete no contexto brasileiro.',
     'Seu objetivo e interpretar os achados do sistema com precisao tecnica, linguagem clara e foco em apoio a conferencia contabil.',
     'Responda sempre em portugues do Brasil.',
+    'As empresas do contexto sao identificadas por apelidos ("Empresa 1", "Empresa 2"). Use exatamente esses apelidos ao se referir a elas e nunca tente adivinhar a razao social ou o CNPJ real.',
     'Nao invente contas, valores, documentos, fatos, pareceres ou conclusoes que nao estejam no contexto recebido.',
     'Quando faltar dado, diferencie explicitamente [Fato], [Inferencia] e [Hipotese].',
     'Quando houver risco alto, destaque isso logo no inicio da resposta.',
@@ -133,12 +235,16 @@ function buildSystemInstruction(): string {
   ].join(' ');
 }
 
-export function buildGeminiPrompt(reports: CompanyReport[], userMessage: string): string {
+export function buildGeminiPrompt(
+  reports: CompanyReport[],
+  userMessage: string,
+  aliases: CompanyAlias[] = buildCompanyAliases(reports)
+): string {
   // O modelo recebe um resumo operacional em vez da base completa para manter
   // o prompt mais leve e focado na interpretacao.
-  return [
+  const prompt = [
     'Contexto estruturado do sistema:',
-    summarizeReportsForPrompt(reports),
+    summarizeReportsForPrompt(reports, aliases),
     '',
     'Checklist interno antes de responder:',
     '- Use apenas dados presentes no contexto.',
@@ -161,20 +267,25 @@ export function buildGeminiPrompt(reports: CompanyReport[], userMessage: string)
     'Nao use markdown de lista com asterisco (*). Prefira lista numerada.',
     'Cada secao deve ter no maximo 3 a 5 linhas, salvo quando o usuario pedir aprofundamento.',
     '',
-    `Pergunta do usuario: ${userMessage}`
+    `Pergunta do usuario: ${anonymizeText(userMessage, aliases)}`
   ].join('\n');
+
+  // Rede de seguranca: nenhum numero de documento deve escapar no prompt final.
+  return stripDocumentNumbers(prompt);
 }
 
-function summarizeReportsForPrompt(reports: CompanyReport[]): string {
+function summarizeReportsForPrompt(reports: CompanyReport[], aliases: CompanyAlias[]): string {
   if (reports.length === 0) {
     return [
       '- Nenhum balancete foi processado nesta sessao.',
       '- O sistema consegue detectar saldos invertidos, contas sem movimentacao, divergencias entre distribuicao e resultado e analises de clientes, fornecedores e estoques.',
-      '- O processamento atual do produto e local no navegador.'
+      '- O processamento do balancete e local no navegador; apenas este resumo pseudonimizado e enviado para a IA.'
     ].join('\n');
   }
 
-  const blocks = reports.map((report) => {
+  const aliasByCompany = new Map(aliases.map((entry) => [entry.companyName, entry.alias]));
+
+  const blocks = reports.map((report, index) => {
     const analysisFlags = report.analysisReports
       .filter((analysis) => analysis.isAttention)
       .map((analysis) => `${analysis.title}: ${analysis.rows.length > 0 ? analysis.rows.length : 1} ocorrencia(s)`);
@@ -190,8 +301,8 @@ function summarizeReportsForPrompt(reports: CompanyReport[]): string {
       .join('; ');
 
     return [
-      `Empresa: ${report.companyName}`,
-      `CNPJ: ${report.cnpj}`,
+      // Identificadores diretos ficam no navegador: o modelo so ve o apelido.
+      `Empresa: ${aliasByCompany.get(report.companyName?.trim() ?? '') ?? `Empresa ${index + 1}`}`,
       `Periodo: ${report.period}`,
       `Linhas extraidas: ${report.rows.length}`,
       `Saldos invertidos: ${report.invertedRows.length}${topInverted ? ` | exemplos: ${topInverted}` : ''}`,
@@ -236,10 +347,12 @@ async function requestGemini(params: {
   apiKey: string;
   history: ChatTurn[];
   userMessage: string;
+  signal?: AbortSignal;
 }): Promise<{ text: string; finishReason?: string }> {
-  const { apiKey, history, userMessage } = params;
+  const { apiKey, history, userMessage, signal } = params;
   const response = await fetch(GEMINI_ENDPOINT, {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey

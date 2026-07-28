@@ -1,6 +1,5 @@
 import { CompanyReport } from '../types';
 import { formatNumberAsBrazilianMoney } from './format';
-import { buildGeminiPrompt } from './gemini';
 
 export interface ChatSuggestion {
   id: string;
@@ -116,19 +115,15 @@ export function generateChatbotResponse(input: string, reports: CompanyReport[])
   }
 
   if (hasAny(question, ['privacidade', 'processamento local', 'seguranca'])) {
-    return 'O fluxo atual do produto processa o PDF localmente no navegador. Isso reduz exposicao de dados sensiveis, mas a interpretacao do chatbot continua limitada ao que foi extraido e classificado com sucesso pelo parser.';
+    return 'O fluxo atual do produto processa o PDF localmente no navegador, sem enviar o arquivo para nenhum servidor. Se voce ativar o assistente de IA, um resumo pseudonimizado da analise (sem CNPJ e com a razao social substituida) passa a ser enviado ao Gemini, mediante autorizacao explicita. A interpretacao continua limitada ao que foi extraido e classificado com sucesso pelo parser.';
   }
 
   return `${buildExecutiveSummary(reports)} Se quiser, posso aprofundar por tema: saldos invertidos, clientes, fornecedores, estoques, distribuicao x resultado ou uma empresa especifica pelo nome.`;
 }
 
-export function buildLocalPromptForGemini(userMessage: string, reports: CompanyReport[]): string {
-  return buildGeminiPrompt(reports, userMessage);
-}
-
 function answerWithoutReports(question: string): string {
   if (hasAny(question, ['privacidade', 'processamento local', 'seguranca'])) {
-    return 'O produto foi desenhado para processar os PDFs localmente no navegador. Isso ajuda a preservar dados sensiveis e evita envio desnecessario do balancete para terceiros.';
+    return 'O produto foi desenhado para processar os PDFs localmente no navegador, sem upload do arquivo. O assistente de IA e opcional e vem desativado: so apos voce informar sua chave do Gemini e autorizar o aviso de privacidade um resumo pseudonimizado da analise passa a ser enviado ao Google.';
   }
 
   if (hasAny(question, ['alertas', 'regras', 'quais alertas'])) {

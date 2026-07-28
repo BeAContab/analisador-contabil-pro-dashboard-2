@@ -3,15 +3,19 @@ import { CompanyReport } from '../types';
 import {
   buildChatFooterNote,
   buildChatSuggestions,
-  buildLocalPromptForGemini,
   buildWelcomeMessage,
   generateChatbotResponse
 } from '../utils/chatbot';
 import {
+  GEMINI_API_KEY_TTL_DAYS,
+  buildConsentPendingNotice,
   buildGeminiBootstrapReply,
   buildLocalFallbackNotice,
   generateGeminiChatReply,
+  getGeminiApiKeyExpiration,
   getStoredGeminiApiKey,
+  hasGeminiConsent,
+  setGeminiConsent,
   storeGeminiApiKey
 } from '../utils/gemini';
 
@@ -29,7 +33,7 @@ interface ChatMessage {
 export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [apiKeyInput, setApiKeyInput] = useState(getStoredGeminiApiKey());
+  const [apiKeyInput, setApiKeyInput] = useState(() => getStoredGeminiApiKey());
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isLoadingReply, setIsLoadingReply] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -40,10 +44,22 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     }
   ]);
   const [hasInjectedReportUpdate, setHasInjectedReportUpdate] = useState(reports.length > 0);
+  const [activeApiKey, setActiveApiKey] = useState(() => getStoredGeminiApiKey());
+  const [consentGranted, setConsentGranted] = useState(() => hasGeminiConsent());
+  const [configError, setConfigError] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Cancela a requisicao em voo quando o componente desmonta ou quando uma nova
+  // mensagem e enviada, evitando setState apos unmount e respostas fora de ordem.
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const suggestions = useMemo(() => buildChatSuggestions(reports), [reports]);
   const footerNote = useMemo(() => buildChatFooterNote(reports), [reports]);
-  const activeApiKey = useMemo(() => getStoredGeminiApiKey(), [apiKeyInput]);
+  const keyExpiration = useMemo(
+    () => (activeApiKey ? getGeminiApiKeyExpiration() : null),
+    [activeApiKey]
+  );
+  // A IA so e acionada quando existe chave E o usuario autorizou o envio.
+  const isGeminiActive = Boolean(activeApiKey) && consentGranted;
   const totalOccurrences = useMemo(
     () =>
       reports.reduce((sum, report) => {
@@ -65,6 +81,12 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, isOpen]);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (reports.length === 0) {
@@ -107,21 +129,39 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     setInput('');
     setIsLoadingReply(true);
 
+    // Descarta qualquer requisicao anterior ainda em voo antes de iniciar a nova.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+    const isStale = () => requestId !== requestIdRef.current;
+
+    const apiKey = getStoredGeminiApiKey();
+    const localReply = () => generateChatbotResponse(trimmed, reports);
+
     try {
-      const apiKey = getStoredGeminiApiKey();
-      const assistantContent = apiKey
-        ? await generateGeminiChatReply({
-            apiKey,
-            reports,
-            history: messages
-              .filter((message) => message.role === 'assistant' || message.role === 'user')
-              .map((message) => ({
-                role: message.role === 'assistant' ? ('model' as const) : ('user' as const),
-                text: message.content
-              })),
-            userMessage: buildLocalPromptForGemini(trimmed, reports)
-          })
-        : `${buildLocalFallbackNotice()} ${generateChatbotResponse(trimmed, reports)}`;
+      let assistantContent: string;
+
+      if (apiKey && consentGranted) {
+        assistantContent = await generateGeminiChatReply({
+          apiKey,
+          reports,
+          history: messages
+            .filter((message) => message.role === 'assistant' || message.role === 'user')
+            .map((message) => ({
+              role: message.role === 'assistant' ? ('model' as const) : ('user' as const),
+              text: message.content
+            })),
+          userMessage: trimmed,
+          signal: controller.signal
+        });
+      } else if (apiKey) {
+        assistantContent = `${buildConsentPendingNotice()} ${localReply()}`;
+      } else {
+        assistantContent = `${buildLocalFallbackNotice()} ${localReply()}`;
+      }
+
+      if (isStale()) return;
 
       setMessages((current) => [
         ...current,
@@ -132,17 +172,28 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
         }
       ]);
     } catch (error) {
+      // Cancelamento e fluxo esperado (unmount ou nova pergunta): nao vira mensagem.
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+        return;
+      }
+      if (isStale()) return;
+
       const errorMessage = error instanceof Error ? sanitizeGeminiError(error.message) : 'Falha desconhecida ao consultar o Gemini.';
       setMessages((current) => [
         ...current,
         {
           id: `assistant-${Date.now() + 1}`,
           role: 'assistant',
-          content: `${buildLocalFallbackNotice(errorMessage)} ${generateChatbotResponse(trimmed, reports)}`
+          content: `${buildLocalFallbackNotice(errorMessage)} ${localReply()}`
         }
       ]);
     } finally {
-      setIsLoadingReply(false);
+      if (!isStale()) {
+        setIsLoadingReply(false);
+      }
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
     }
   }
 
@@ -152,8 +203,23 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   }
 
   function handleSaveApiKey() {
+    if (!apiKeyInput.trim()) {
+      setConfigError('Informe uma chave do Gemini antes de salvar.');
+      return;
+    }
+
+    // Sem autorizacao explicita nada e enviado: o consentimento e pre-requisito
+    // para gravar a chave e ativar a IA.
+    if (!consentGranted) {
+      setConfigError('Confirme o aviso de privacidade para autorizar o envio de dados ao Gemini.');
+      return;
+    }
+
+    setConfigError('');
     storeGeminiApiKey(apiKeyInput);
-    setApiKeyInput(getStoredGeminiApiKey());
+    const storedKey = getStoredGeminiApiKey();
+    setApiKeyInput(storedKey);
+    setActiveApiKey(storedKey);
     setMessages((current) => [
       ...current,
       {
@@ -163,6 +229,19 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
       }
     ]);
     setIsConfigOpen(false);
+  }
+
+  function handleClearApiKey() {
+    storeGeminiApiKey('');
+    setApiKeyInput('');
+    setActiveApiKey('');
+    setConfigError('');
+  }
+
+  function handleToggleConsent(granted: boolean) {
+    setGeminiConsent(granted);
+    setConsentGranted(granted);
+    if (granted) setConfigError('');
   }
 
   return (
@@ -209,16 +288,55 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
         {isConfigOpen && (
           <div className="border-b border-surface-border bg-surface-80 p-5 shadow-inner">
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                Cole sua chave do Gemini ou use `VITE_GEMINI_API_KEY` em `.env.local`. A chave digitada aqui fica salva neste navegador.
-              </p>
+              <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-warning">
+                  O que sai do seu navegador
+                </p>
+                <p className="text-xs text-foreground leading-relaxed">
+                  A leitura do PDF continua 100% local. Ao ativar a IA, um <strong>resumo pseudonimizado</strong> da
+                  análise é enviado ao Google (Gemini): razão social vira &quot;Empresa 1&quot;, CNPJ e CPF são removidos,
+                  mas códigos, nomes de contas, saldos e alertas são enviados.
+                </p>
+                <label className="flex items-start gap-2 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={consentGranted}
+                    onChange={(event) => handleToggleConsent(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 accent-primary"
+                  />
+                  <span className="text-xs text-foreground leading-relaxed font-medium">
+                    Autorizo o envio desse resumo para o Gemini e entendo que o tratamento passa a seguir a
+                    política de privacidade do Google.
+                  </span>
+                </label>
+              </div>
+
+              <label htmlFor="gemini-api-key" className="block text-xs text-muted-foreground font-medium leading-relaxed">
+                Chave da API do Gemini
+              </label>
               <input
+                id="gemini-api-key"
+                name="gemini-api-key"
                 type="password"
+                autoComplete="off"
                 value={apiKeyInput}
                 onChange={(event) => setApiKeyInput(event.target.value)}
                 placeholder="AIza..."
                 className="w-full rounded-xl border border-surface-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition-all"
               />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                A chave fica salva sem criptografia neste navegador e expira automaticamente em{' '}
+                {GEMINI_API_KEY_TTL_DAYS} dias.
+                {keyExpiration ? ` Validade atual: ${keyExpiration.toLocaleDateString('pt-BR')}.` : ''} Use uma chave
+                própria com cota limitada e revogue-a se o dispositivo for compartilhado.
+              </p>
+
+              {configError && (
+                <p role="alert" className="text-xs font-semibold text-error">
+                  {configError}
+                </p>
+              )}
+
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="flex gap-2">
                   <button
@@ -230,17 +348,14 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      storeGeminiApiKey('');
-                      setApiKeyInput('');
-                    }}
+                    onClick={handleClearApiKey}
                     className="rounded-lg border border-surface-border bg-surface px-4 py-2 text-xs font-bold text-foreground hover:bg-muted transition-colors"
                   >
                     Limpar
                   </button>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${activeApiKey ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                  {activeApiKey ? 'Gemini ativo' : 'Modo local'}
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${isGeminiActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                  {isGeminiActive ? 'Gemini ativo' : 'Modo local'}
                 </span>
               </div>
             </div>
@@ -280,7 +395,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
             <div className="flex justify-start">
               <article className="max-w-[85%] rounded-2xl rounded-tl-sm border border-surface-border bg-background px-5 py-4 text-sm text-muted-foreground flex items-center gap-3">
                 <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                {activeApiKey ? 'Consultando Gemini...' : 'Gerando resposta local...'}
+                {isGeminiActive ? 'Consultando Gemini...' : 'Gerando resposta local...'}
               </article>
             </div>
           )}
