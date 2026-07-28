@@ -2,6 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { AnalysisReport, BalanceComparisonReport, CompanyReport, DepreciationPairRow, LedgerLine, UnclassifiedLine } from '../types';
 import { balanceNature, isZeroMoney, parseBrazilianMoney } from './format';
+import { absoluteCurrentBalance, absoluteValue, ledgerBalanceMismatch, signedCurrentBalance } from './balance';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -29,6 +30,8 @@ const cnpjRegex = /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/;
 const companyCodeRegex = /^\(\s*(\d+)\s*-\s*(\d+)\s*\)\s*(.+)$/;
 const moneyRegex = /\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?|\(?\d+,\d{2}\)?[DC]?|\b0(?:[,.]00)?\b/gi;
 const moneyBoundaryRegex = /([A-Za-zÀ-ÿ])(\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?)/g;
+/** Item de texto que e, sozinho, um valor monetario completo (ex.: "1.020,00", "0,00C"). */
+const standaloneMoneyRegex = /^\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?$/i;
 const defaultNatureAccounts = ['1.2.05.007', '2.4.13.004'];
 
 export async function parsePdfFile(file: File): Promise<CompanyReport> {
@@ -57,12 +60,29 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
         .filter((item) => item.text.trim().length > 0);
 
       pageLines.push(...groupItemsIntoLines(items));
+
+      // Devolve a thread ao navegador entre paginas para que a barra de
+      // progresso continue pintando em PDFs grandes.
+      if (pageNumber < document.numPages) {
+        await yieldToBrowser();
+      }
     }
 
     const allText = pageLines.map((line) => line.text).join('\n');
     const meta = extractMetadata(allText, file.name);
     const parsed = extractLedgerLines(pageLines);
-    const rows = parsed.rows;
+    const deduped = dedupeLedgerRows(parsed.rows);
+    const rows = deduped.rows;
+
+    errors.push(...deduped.warnings);
+
+    const inconsistentCount = rows.filter((row) => row.balanceMismatch !== undefined).length;
+    if (inconsistentCount > 0) {
+      errors.push(
+        `${inconsistentCount} linha(s) nao fecham a conta saldo anterior + debito - credito = saldo atual. ` +
+          'Podem indicar leitura incorreta de coluna ou valor truncado - confira essas linhas no PDF original.'
+      );
+    }
     const invertedRows = rows
       .filter((row) => {
         const nature = balanceNature(row.currentBalance);
@@ -106,6 +126,13 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       errors
     };
   } catch (error) {
+    // Sem isto o erro original era descartado e qualquer falha (PDF cifrado,
+    // worker do pdf.js indisponivel, arquivo corrompido) virava a mesma
+    // mensagem generica, impossibilitando diagnostico em producao.
+    console.error(`[parser] Falha ao ler "${file.name}":`, error);
+
+    const detail = error instanceof Error ? error.message : String(error);
+
     return {
       id: `${file.name}-${file.size}-${file.lastModified}`,
       fileName: file.name,
@@ -119,20 +146,31 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       zeroMovementRows: [],
       comparisonReport: buildComparisonReport([]),
       analysisReports: buildAnalysisReports([]),
-      errors: ['Não foi possível ler este PDF. Verifique se o arquivo está no formato esperado.']
+      errors: [
+        'Não foi possível ler este PDF. Verifique se o arquivo está no formato esperado.',
+        `Detalhe técnico: ${detail}`
+      ]
     };
   }
+}
+
+function yieldToBrowser(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function groupItemsIntoLines(items: TextItem[]): PageLine[] {
   const buckets: TextItem[][] = [];
 
+  // Os itens ja vem ordenados por Y decrescente, entao todos os fragmentos de
+  // uma mesma linha chegam em sequencia: basta comparar com o ultimo balde.
+  // A versao anterior varria todos os baldes por item (O(n^2)), o que travava a
+  // thread principal em PDFs com muitas paginas.
   [...items]
     .sort((a, b) => b.y - a.y || a.x - b.x)
     .forEach((item) => {
-      const bucket = buckets.find((line) => Math.abs(line[0].y - item.y) <= 3);
-      if (bucket) {
-        bucket.push(item);
+      const lastBucket = buckets[buckets.length - 1];
+      if (lastBucket && Math.abs(lastBucket[0].y - item.y) <= 3) {
+        lastBucket.push(item);
       } else {
         buckets.push([item]);
       }
@@ -145,7 +183,18 @@ function groupItemsIntoLines(items: TextItem[]): PageLine[] {
 
     sorted.forEach((item, index) => {
       const gap = index === 0 ? 0 : item.x - previousX;
-      if (index > 0 && gap > 12) pieces.push(' ');
+      const previousPiece = pieces[pieces.length - 1] ?? '';
+
+      // O `width` devolvido pelo pdf.js as vezes invade a coluna seguinte,
+      // produzindo gap negativo entre celulas realmente separadas. Quando isso
+      // acontece entre um digito e um valor monetario completo, a concatenacao
+      // cria um numero falso: em contas de pessoa fisica o CPF colava no saldo
+      // ("...OLIVEIRA 01504106466" + "0,00C" => "015041064660,00C"), inflando o
+      // valor em ordens de grandeza. Dois itens distintos nunca devem formar um
+      // unico numero.
+      const gluesDigitToMoney = /\d$/.test(previousPiece) && standaloneMoneyRegex.test(item.text);
+
+      if (index > 0 && (gap > 12 || gluesDigitToMoney)) pieces.push(' ');
       pieces.push(item.text);
       previousX = item.x + Math.max(item.width, 8);
     });
@@ -187,9 +236,9 @@ function extractMetadata(text: string, fileName: string) {
 function extractLedgerLines(lines: PageLine[]) {
   const rows: LedgerLine[] = [];
   const unclassified: UnclassifiedLine[] = [];
-  const candidates = mergeContinuationLines(lines);
+  const { merged, orphanFragments } = mergeContinuationLines(lines);
 
-  candidates.forEach((line) => {
+  merged.forEach((line) => {
     if (!accountRegex.test(line.text)) return;
 
     const row = parseLedgerLine(line.text, line.page);
@@ -204,11 +253,17 @@ function extractLedgerLines(lines: PageLine[]) {
     }
   });
 
+  // Fragmentos que vinham logo apos uma linha de conta e nao foram absorvidos
+  // eram descartados em silencio. Preserva-los respeita o principio de nunca
+  // sumir com texto que o parser nao conseguiu interpretar.
+  unclassified.push(...orphanFragments);
+
   return { rows, unclassified };
 }
 
-function mergeContinuationLines(lines: PageLine[]): PageLine[] {
+function mergeContinuationLines(lines: PageLine[]): { merged: PageLine[]; orphanFragments: UnclassifiedLine[] } {
   const merged: PageLine[] = [];
+  const orphanFragments: UnclassifiedLine[] = [];
 
   lines.forEach((line) => {
     const text = normalizeLine(line.text);
@@ -216,15 +271,76 @@ function mergeContinuationLines(lines: PageLine[]): PageLine[] {
 
     const startsAccount = accountRegex.test(text);
     const previous = merged[merged.length - 1];
+    const previousIsAccount = Boolean(previous && accountRegex.test(previous.text));
 
-    if (!startsAccount && previous && accountRegex.test(previous.text) && !hasFourMoneyValues(previous.text)) {
+    if (!startsAccount && previousIsAccount && previous && !hasFourMoneyValues(previous.text)) {
       previous.text = normalizeLine(`${previous.text} ${text}`);
-    } else {
-      merged.push({ page: line.page, text });
+      return;
     }
+
+    // Fragmento logo depois de uma linha de conta ja completa: provavelmente e
+    // continuacao de nome que se perderia. Registra para revisao manual em vez
+    // de descartar.
+    if (!startsAccount && previousIsAccount && !hasMoneyValue(text)) {
+      orphanFragments.push({
+        page: line.page,
+        text,
+        reason:
+          'Trecho sem código de conta logo após uma linha contábil completa. Pode ser continuação de nome que não pôde ser anexada com segurança.'
+      });
+      return;
+    }
+
+    merged.push({ page: line.page, text });
   });
 
-  return merged;
+  return { merged, orphanFragments };
+}
+
+/**
+ * Deduplica linhas repetidas e sinaliza conflitos.
+ *
+ * Balancetes costumam repetir a mesma conta entre paginas (subtotais, cabecalho
+ * de continuacao). Antes, essas repeticoes eram contadas duas vezes em
+ * `invertedRows`/`zeroMovementRows`, inflando os alertas, e `findAccountRow`
+ * pegava a primeira ocorrencia sem avisar quando havia divergencia.
+ *
+ * Repeticao identica (mesma conta e mesmos quatro valores) e colapsada; conta
+ * repetida com valores DIFERENTES e mantida, porque pode ser desdobramento
+ * legitimo, mas gera aviso para conferencia manual.
+ */
+function dedupeLedgerRows(rows: LedgerLine[]): { rows: LedgerLine[]; warnings: string[] } {
+  const seen = new Set<string>();
+  const byAccount = new Map<string, Set<string>>();
+  const deduped: LedgerLine[] = [];
+
+  rows.forEach((row) => {
+    const valueSignature = `${row.previousBalance}|${row.debit}|${row.credit}|${row.currentBalance}`;
+    const fullSignature = `${row.account}|${row.name}|${valueSignature}`;
+
+    if (seen.has(fullSignature)) return;
+    seen.add(fullSignature);
+
+    const variants = byAccount.get(row.account) ?? new Set<string>();
+    variants.add(valueSignature);
+    byAccount.set(row.account, variants);
+
+    deduped.push(row);
+  });
+
+  const conflicting = [...byAccount.entries()]
+    .filter(([, variants]) => variants.size > 1)
+    .map(([account]) => account);
+
+  const warnings =
+    conflicting.length > 0
+      ? [
+          `Conta(s) ${conflicting.slice(0, 5).join(', ')}${conflicting.length > 5 ? ` e mais ${conflicting.length - 5}` : ''} ` +
+            'aparecem mais de uma vez com valores diferentes. As análises usam a primeira ocorrência - confira no PDF original.'
+        ]
+      : [];
+
+  return { rows: deduped, warnings };
 }
 
 function parseLedgerLine(rawLine: string, page: number): LedgerLine | null {
@@ -262,6 +378,11 @@ function parseLedgerLine(rawLine: string, page: number): LedgerLine | null {
   const values = lastFour.map((match) => match[0]);
   const [previousBalance, debit, credit, currentBalance] = values;
 
+  // `slice(-4)` assume que os quatro ultimos valores sao as colunas corretas.
+  // Se um numero do nome da conta entrar na conta, as colunas saem
+  // desalinhadas - a identidade contabil abaixo denuncia esse caso.
+  const balanceMismatch = ledgerBalanceMismatch({ previousBalance, debit, credit, currentBalance });
+
   return {
     account,
     name,
@@ -275,12 +396,17 @@ function parseLedgerLine(rawLine: string, page: number): LedgerLine | null {
     previousBalanceNumber: parseBrazilianMoney(previousBalance),
     debitNumber: parseBrazilianMoney(debit),
     creditNumber: parseBrazilianMoney(credit),
-    currentBalanceNumber: parseBrazilianMoney(currentBalance)
+    currentBalanceNumber: parseBrazilianMoney(currentBalance),
+    ...(balanceMismatch !== null ? { balanceMismatch } : {})
   };
 }
 
 function hasFourMoneyValues(text: string): boolean {
   return [...text.matchAll(moneyRegex)].length >= 4;
+}
+
+function hasMoneyValue(text: string): boolean {
+  return [...text.matchAll(moneyRegex)].length > 0;
 }
 
 function isDefaultNatureAccount(account: string): boolean {
@@ -805,14 +931,6 @@ function findAccountFamily(rows: LedgerLine[], account: string): LedgerLine[] {
   return rows.filter((row) => row.account === account || row.account.startsWith(`${account}.`));
 }
 
-function absoluteCurrentBalance(row?: LedgerLine): number {
-  return row ? Math.abs(parseBrazilianMoney(row.currentBalance)) : 0;
-}
-
-function absoluteValue(value: string): number {
-  return Math.abs(parseBrazilianMoney(value));
-}
-
 function numbersAreEqual(left?: number, right?: number): boolean {
   if (left === undefined || right === undefined) return false;
   return Math.abs(left - right) < 0.005;
@@ -820,12 +938,6 @@ function numbersAreEqual(left?: number, right?: number): boolean {
 
 function sumCredits(rows: LedgerLine[]): number {
   return rows.reduce((sum, row) => sum + row.creditNumber, 0);
-}
-
-function signedCurrentBalance(row?: LedgerLine): number {
-  if (!row) return 0;
-  const value = Math.abs(parseBrazilianMoney(row.currentBalance));
-  return balanceNature(row.currentBalance) === 'D' ? -value : value;
 }
 
 function normalizeForCompare(value: string): string {

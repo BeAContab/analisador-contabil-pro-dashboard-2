@@ -1,5 +1,6 @@
 import { AnalysisCalculation, AnalysisKind, CompanyReport, DepreciationPairRow, InvertedBalanceRow, LedgerLine, ReportKind } from '../types';
-import { balanceNature, classifyAccount, formatNumberAsBrazilianMoney, formatNumberAsPercentage, nowLabel, parseBrazilianMoney, slugify } from './format';
+import { classifyAccount, formatNumberAsBrazilianMoney, formatNumberAsPercentage, nowLabel, slugify } from './format';
+import { signedCurrentBalance } from './balance';
 
 const balanceColumns = [
   'Natureza',
@@ -570,12 +571,6 @@ function comparisonRow(label: string, row: LedgerLine | undefined, value: number
 
 function comparisonLabel(prefix: string, row?: LedgerLine) {
   return row ? `${prefix} (${row.name})` : prefix;
-}
-
-function signedCurrentBalance(row?: LedgerLine): number {
-  if (!row) return 0;
-  const value = Math.abs(parseBrazilianMoney(row.currentBalance));
-  return balanceNature(row.currentBalance) === 'D' ? -value : value;
 }
 
 function comparisonFormula(company: CompanyReport): string {

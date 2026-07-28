@@ -1,6 +1,7 @@
 import { CompanyReport } from '../types';
 import { formatNumberAsBrazilianMoney } from './format';
 import { CompanyAlias, anonymizeText, buildCompanyAliases, deanonymizeText, stripDocumentNumbers } from './anonymize';
+import { sumOccurrences } from './occurrences';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 const GEMINI_API_KEY_STORAGE_KEY = 'gemini_api_key';
@@ -320,18 +321,6 @@ function summarizeReportsForPrompt(reports: CompanyReport[], aliases: CompanyAli
   ].join('\n');
 
   return [totals, ...blocks.map((block) => `---\n${block}`)].join('\n');
-}
-
-function sumOccurrences(reports: CompanyReport[]) {
-  return reports.reduce((sum, report) => {
-    return (
-      sum +
-      report.invertedRows.length +
-      report.zeroMovementRows.length +
-      (report.comparisonReport.isAttention ? 1 : 0) +
-      report.analysisReports.reduce((inner, analysis) => inner + (analysis.rows.length > 0 ? analysis.rows.length : analysis.isAttention ? 1 : 0), 0)
-    );
-  }, 0);
 }
 
 function extractGeminiText(response: GeminiResponse): string {

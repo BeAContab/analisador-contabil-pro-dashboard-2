@@ -1,4 +1,4 @@
-import { ChangeEvent, DragEvent, useMemo, useState } from 'react';
+import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CompanyReport } from '../types';
 import { parsePdfFile } from '../utils/parser';
 
@@ -10,6 +10,18 @@ export function useFileProcessing() {
   const [message, setMessage] = useState('');
   const [processingIndex, setProcessingIndex] = useState(0);
   const [processingFileName, setProcessingFileName] = useState('');
+  // `isProcessing` e estado: dentro de processFiles ele ainda carrega o valor do
+  // render anterior, entao o guard de reentrada precisa de uma ref.
+  const isProcessingRef = useRef(false);
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current !== null) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const processingPercent = files.length > 0 ? Math.round((processingIndex / files.length) * 100) : 0;
 
@@ -63,9 +75,20 @@ export function useFileProcessing() {
   }
 
   async function processFiles() {
+    // Sem este guard, um duplo clique disparava dois loops concorrentes que
+    // faziam setReports intercalado, corrompendo a lista final.
+    if (isProcessingRef.current) return;
+
     if (files.length === 0) {
       setMessage('Envie um ou mais arquivos PDF para iniciar a análise.');
       return;
+    }
+
+    isProcessingRef.current = true;
+
+    if (resetTimeoutRef.current !== null) {
+      clearTimeout(resetTimeoutRef.current);
+      resetTimeoutRef.current = null;
     }
 
     setIsProcessing(true);
@@ -83,7 +106,9 @@ export function useFileProcessing() {
         setReports([...parsed]);
       }
     } finally {
-      setTimeout(() => {
+      isProcessingRef.current = false;
+      resetTimeoutRef.current = setTimeout(() => {
+        resetTimeoutRef.current = null;
         setIsProcessing(false);
         setProcessingIndex(0);
         setProcessingFileName('');
@@ -92,6 +117,10 @@ export function useFileProcessing() {
   }
 
   function clearAll() {
+    if (resetTimeoutRef.current !== null) {
+      clearTimeout(resetTimeoutRef.current);
+      resetTimeoutRef.current = null;
+    }
     setFiles([]);
     setReports([]);
     setMessage('');

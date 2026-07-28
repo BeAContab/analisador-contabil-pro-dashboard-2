@@ -1,5 +1,6 @@
 import { CompanyReport } from '../types';
 import { formatNumberAsBrazilianMoney } from './format';
+import { companyOccurrences, sumOccurrences } from './occurrences';
 
 export interface ChatSuggestion {
   id: string;
@@ -270,19 +271,6 @@ function findCompanyMention(question: string, reports: CompanyReport[]): Company
     const normalizedName = normalize(report.companyName);
     return normalizedName.length > 3 && question.includes(normalizedName);
   });
-}
-
-function sumOccurrences(reports: CompanyReport[]): number {
-  return reports.reduce((sum, report) => sum + companyOccurrences(report), 0);
-}
-
-function companyOccurrences(report: CompanyReport): number {
-  return (
-    report.invertedRows.length +
-    report.zeroMovementRows.length +
-    (report.comparisonReport.isAttention ? 1 : 0) +
-    report.analysisReports.reduce((sum, analysis) => sum + (analysis.rows.length > 0 ? analysis.rows.length : analysis.isAttention ? 1 : 0), 0)
-  );
 }
 
 function hasAny(value: string, terms: string[]): boolean {

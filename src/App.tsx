@@ -7,6 +7,7 @@ import { Dropzone } from './components/Dropzone';
 import { SummaryCards } from './components/SummaryCards';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { useFileProcessing } from './hooks/useFileProcessing';
+import { companyOccurrences, companyReportsWithAlerts } from './utils/occurrences';
 
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicy })));
 const DataSecurity = lazy(() => import('./components/DataSecurity').then((module) => ({ default: module.DataSecurity })));
@@ -145,7 +146,7 @@ export function App() {
             {view === 'docs' && <LocalProcessingDoc />}
           </Suspense>
 
-          {isProcessing && processingIndex > 0 && (
+          {isProcessing && (
             <ProcessingOverlay
               index={processingIndex}
               total={files.length}
@@ -169,30 +170,14 @@ function buildResultsSummary(reports: CompanyReport[]) {
   let totalOccurrences = 0;
 
   reports.forEach((report) => {
-    const comparisonOccurrence = report.comparisonReport.isAttention ? 1 : 0;
-    const analysisOccurrences = report.analysisReports.map((analysis) => ({
-      reportCount: analysis.isAttention ? 1 : 0,
-      rowCount: analysis.rows.length > 0 ? analysis.rows.length : analysis.isAttention ? 1 : 0
-    }));
-
-    const reportCount =
-      (report.invertedRows.length > 0 ? 1 : 0) +
-      (report.zeroMovementRows.length > 0 ? 1 : 0) +
-      comparisonOccurrence +
-      analysisOccurrences.reduce((sum, item) => sum + item.reportCount, 0);
-
-    const occurrenceCount =
-      report.invertedRows.length +
-      report.zeroMovementRows.length +
-      comparisonOccurrence +
-      analysisOccurrences.reduce((sum, item) => sum + item.rowCount, 0);
+    const reportCount = companyReportsWithAlerts(report);
 
     if (reportCount > 0) {
       companiesWithAlerts += 1;
     }
 
     reportsWithOccurrences += reportCount;
-    totalOccurrences += occurrenceCount;
+    totalOccurrences += companyOccurrences(report);
   });
 
   return {

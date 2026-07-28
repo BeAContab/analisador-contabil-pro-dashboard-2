@@ -18,6 +18,7 @@ import {
   setGeminiConsent,
   storeGeminiApiKey
 } from '../utils/gemini';
+import { sumOccurrences } from '../utils/occurrences';
 
 interface ChatbotFabProps {
   reports: CompanyReport[];
@@ -60,22 +61,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   );
   // A IA so e acionada quando existe chave E o usuario autorizou o envio.
   const isGeminiActive = Boolean(activeApiKey) && consentGranted;
-  const totalOccurrences = useMemo(
-    () =>
-      reports.reduce((sum, report) => {
-        return (
-          sum +
-          report.invertedRows.length +
-          report.zeroMovementRows.length +
-          (report.comparisonReport.isAttention ? 1 : 0) +
-          report.analysisReports.reduce(
-            (innerSum, analysis) => innerSum + (analysis.rows.length > 0 ? analysis.rows.length : analysis.isAttention ? 1 : 0),
-            0
-          )
-        );
-      }, 0),
-    [reports]
-  );
+  const totalOccurrences = useMemo(() => sumOccurrences(reports), [reports]);
 
   useEffect(() => {
     if (!scrollRef.current) return;

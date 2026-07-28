@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { InvertedBalanceRow, LedgerLine, ReportKind } from '../types';
 import { classifyAccount, parseBrazilianMoney } from '../utils/format';
 import { correctiveAction } from '../utils/reports';
@@ -51,6 +51,20 @@ export function DataTable({ rows, kind }: DataTableProps) {
   }, [rows, query, sortKey, direction, kind]);
 
   const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+
+  // Trocar de aba (kind) ou receber outro conjunto de linhas mantinha a pagina
+  // anterior, podendo exibir uma pagina vazia fora do intervalo.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows, kind]);
+
+  // Rede de seguranca para quando a filtragem encolhe o resultado.
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   function updateSort(key: SortKey) {

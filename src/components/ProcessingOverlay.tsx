@@ -15,7 +15,8 @@ export function ProcessingOverlay({ index, total, percent, fileName }: Processin
         <div className="text-center space-y-sm">
           <h3 className="font-headline-md text-primary">Processando Balancetes</h3>
           <p className="text-body-md text-secondary">
-            Processando {index} de {total} arquivo(s) ({percent}%)
+            {/* index fica em 0 no instante inicial, antes do primeiro arquivo entrar no loop. */}
+            {index > 0 ? `Processando ${index} de ${total} arquivo(s) (${percent}%)` : 'Preparando análise...'}
           </p>
           {fileName && (
             <p className="text-body-sm text-on-surface-variant italic truncate max-w-xs">

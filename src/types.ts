@@ -14,6 +14,12 @@ export interface LedgerLine {
   debitNumber: number;
   creditNumber: number;
   currentBalanceNumber: number;
+  /**
+   * Diferenca absoluta quando saldo anterior + debito - credito nao reproduz o
+   * saldo atual. Ausente quando a linha fecha. Sinaliza possivel desalinhamento
+   * de coluna ou valor truncado - a linha continua valida e utilizavel.
+   */
+  balanceMismatch?: number;
 }
 
 export interface UnclassifiedLine {

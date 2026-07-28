@@ -24,7 +24,10 @@ export function parseBrazilianMoney(value: string): number {
 
   if (!clean) return 0;
 
-  const negative = clean.startsWith('(') && clean.includes(')');
+  // Basta um dos parenteses para caracterizar valor negativo: quebra de pagina
+  // ou OCR frequentemente truncam o par, e exigir os dois invertia o sinal
+  // silenciosamente (um "(1.234,56" virava positivo).
+  const negative = clean.startsWith('(') || clean.endsWith(')');
   const normalized = clean
     .replace(/[()]/g, '')
     .replace(/\./g, '')
