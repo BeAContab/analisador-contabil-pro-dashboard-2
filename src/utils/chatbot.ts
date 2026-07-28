@@ -199,9 +199,11 @@ function buildInvertedResponse(reports: CompanyReport[]): string {
     return 'Nao encontrei saldos invertidos nos balancetes processados. Pelas regras atuais, isso indica que as contas do Ativo e do Passivo/PL nao terminaram com natureza inconsistente.';
   }
 
+  // `total > 0` (checado acima) garante que pelo menos um report tem
+  // invertedRows.length > 0, entao o filtro abaixo nunca fica vazio.
   const top = reports
     .filter((report) => report.invertedRows.length > 0)
-    .sort((left, right) => right.invertedRows.length - left.invertedRows.length)[0];
+    .sort((left, right) => right.invertedRows.length - left.invertedRows.length)[0]!;
 
   return `Foram encontrados ${total} saldo(s) invertido(s). Esse alerta aparece quando contas do Ativo terminam credoras ou contas do Passivo/PL terminam devedoras, fora das excecoes previstas. A concentracao mais alta esta em ${top.companyName}, com ${top.invertedRows.length} ocorrencia(s). O proximo passo ideal e revisar classificacao, encerramento e possiveis lancamentos invertidos.`;
 }

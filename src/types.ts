@@ -7,7 +7,7 @@ export interface LedgerLine {
   debit: string;
   credit: string;
   currentBalance: string;
-  code?: string;
+  code?: string | undefined;
   page?: number;
   raw: string;
   previousBalanceNumber: number;
@@ -31,7 +31,7 @@ export interface UnclassifiedLine {
 export interface CompanyReport {
   id: string;
   fileName: string;
-  companyCode?: string;
+  companyCode?: string | undefined;
   companyName: string;
   cnpj: string;
   period: string;
@@ -49,10 +49,10 @@ export interface InvertedBalanceRow extends LedgerLine {
 }
 
 export interface BalanceComparisonReport {
-  distributionRow?: LedgerLine;
-  account3Row?: LedgerLine;
-  account6Row?: LedgerLine;
-  account2413Row?: LedgerLine;
+  distributionRow?: LedgerLine | undefined;
+  account3Row?: LedgerLine | undefined;
+  account6Row?: LedgerLine | undefined;
+  account2413Row?: LedgerLine | undefined;
   mode: 'distribution' | 'fallback';
   baseValue: number;
   targetValue: number;
@@ -83,7 +83,7 @@ export interface AnalysisReport {
   rows: LedgerLine[];
   depreciationPairs?: DepreciationPairRow[];
   isAttention: boolean;
-  calculation?: AnalysisCalculation;
+  calculation?: AnalysisCalculation | undefined;
 }
 
 export type ReportKind = 'inverted' | 'zero' | 'comparison' | AnalysisKind;
@@ -102,9 +102,16 @@ export interface AnalysisCalculationItem {
 export interface DepreciationPairRow {
   assetCode: string;
   assetName: string;
-  assetCurrentBalance: string;
+  /**
+   * Valor absoluto do S. Atual do bem (natureza C/D ignorada de proposito
+   * nesta analise - ver intro de buildAnalysis11 em parser.ts). `undefined`
+   * quando nao foi encontrado um bem equivalente - distinto de um bem com
+   * saldo genuinamente zero, que sempre vem como `0`.
+   */
+  assetCurrentBalance?: number | undefined;
   depreciationCode: string;
   depreciationName: string;
-  depreciationCurrentBalance: string;
+  /** Valor absoluto do S. Atual da depreciacao/amortizacao/exaustao. */
+  depreciationCurrentBalance: number;
   correctiveAction: string;
 }

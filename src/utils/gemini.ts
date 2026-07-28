@@ -130,7 +130,7 @@ export async function generateGeminiChatReply(params: {
   reports: CompanyReport[];
   history: ChatTurn[];
   userMessage: string;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 }): Promise<string> {
   const { apiKey, reports, history, userMessage, signal } = params;
 
@@ -336,12 +336,15 @@ async function requestGemini(params: {
   apiKey: string;
   history: ChatTurn[];
   userMessage: string;
-  signal?: AbortSignal;
-}): Promise<{ text: string; finishReason?: string }> {
+  signal?: AbortSignal | undefined;
+}): Promise<{ text: string; finishReason?: string | undefined }> {
   const { apiKey, history, userMessage, signal } = params;
   const response = await fetch(GEMINI_ENDPOINT, {
     method: 'POST',
-    signal,
+    // lib.dom tipa RequestInit.signal como `AbortSignal | null` (sem
+    // `undefined` no valor, so a chave e opcional) - com
+    // exactOptionalPropertyTypes, precisa converter explicitamente.
+    signal: signal ?? null,
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey
@@ -381,7 +384,7 @@ async function requestGemini(params: {
   };
 }
 
-function shouldContinueGeminiReply(result: { text: string; finishReason?: string }) {
+function shouldContinueGeminiReply(result: { text: string; finishReason?: string | undefined }) {
   if (result.finishReason === 'MAX_TOKENS') {
     return true;
   }
@@ -391,7 +394,8 @@ function shouldContinueGeminiReply(result: { text: string; finishReason?: string
 
   // Heuristicas leves para detectar respostas cortadas mesmo quando o provedor
   // nao sinaliza explicitamente esgotamento de tokens.
-  const lastChar = text[text.length - 1];
+  // `if (!text) return false;` acima garante text.length >= 1.
+  const lastChar = text[text.length - 1]!;
   const endsAbruptly =
     /[A-Za-z0-9)]/.test(lastChar) &&
     !text.endsWith('...') &&

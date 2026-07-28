@@ -49,8 +49,10 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean, onEscape?: 
         return;
       }
 
-      const first = items[0];
-      const last = items[items.length - 1];
+      // O `items.length === 0` acima ja retornou; daqui pra baixo o array tem
+      // pelo menos 1 elemento, entao os dois indices sempre existem.
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
 
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();

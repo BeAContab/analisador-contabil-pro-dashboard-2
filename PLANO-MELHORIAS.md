@@ -1,6 +1,6 @@
 # Plano de Implementação Faseado — Analisador Contábil Pro Dashboard
 
-> **Status:** Fases 1, 2, 3 e 4 concluídas na branch `fase-1-seguranca-privacidade`. Fases 5 e 6 pendentes.
+> **Status:** Fases 1 a 5 concluídas na branch `fase-1-seguranca-privacidade`. Fase 6 pendente.
 
 ## Contexto
 
@@ -88,7 +88,15 @@ Itens:
 
 ---
 
-## Fase 5 — Build/config e qualidade de longo prazo
+## Fase 5 — Build/config e qualidade de longo prazo ✅ CONCLUÍDA
+
+> Aplicada na branch `fase-1-seguranca-privacidade`, inteiramente em Sonnet 5 — **sem escalonamento a Opus 5**. Os dois pontos de risco previstos (5.2 e 5.5/5.8) se confirmaram mecânicos na prática:
+> - **ESLint 100% limpo** de primeira (0 erros/avisos) contra o código legado das Fases 1-4.
+> - **43 testes** cobrindo `format.ts`, `balance.ts` (incluindo o sanity check da Fase 2), `parser.ts` (incluindo o bug real do CPF colado ao saldo) e `anonymize.ts` (camada de privacidade da Fase 1) — todos passando.
+> - As **3 flags de strictness** (`noImplicitOverride`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`) foram habilitadas com sucesso: 42 erros corrigidos, todos com causa raiz mecânica identificável (grupos de captura de regex, tuplas de tamanho fixo, invariantes de array não-vazio) — exceto **um bug real e não-trivial** encontrado em `CompanyCard.tsx` (empresa sem nenhuma ocorrência forçava um `kind` indefinido no `DataTable` via um `!` já existente no código; corrigido com um estado vazio explícito).
+> - **5.8** (migração `DepreciationPairRow`) foi viável sem julgamento de negócio porque o próprio texto de `buildAnalysis11` já documentava que a natureza C/D é ignorada nessa análise — logo, não havia perda de sinal ao migrar para número puro. Validado com PDFs reais (`ARTE PRODUCOES`: `646.536,42` renderizado corretamente na UI).
+> - `npm audit`: manteve-se em 2 vulnerabilidades (só a cadeia `jspdf`, rastreada na Fase 6).
+> - **Decisão consciente:** o repositório não foi reformatado com `npm run format` — isso tocaria ~28 arquivos só por diferenças estilísticas e deveria ser um commit separado e revisável, não misturado com a infraestrutura.
 
 **Modelo recomendado: Sonnet 5 · Esforço: Alto (~1 semana)**
 Justificativa: a maior parte é configuração de tooling com boas práticas conhecidas (lint, chunks, meta tags — mecânico), mas dois itens pesam a fase para "Alto": desenhar a estratégia de testes para lógica contábil com histórico de bugs sutis (5.2) e a migração de shape de tipo de `DepreciationPairRow` (5.8), que tem risco real de regressão espalhada. Recomenda-se Sonnet 5 para a execução do grosso da fase, com escalonamento pontual a Opus 5 especificamente nos itens 5.2 (estratégia de casos de teste) e 5.8 (migração de tipo) se a complexidade se confirmar maior que o esperado durante a execução.

@@ -124,12 +124,17 @@ export function CompanyCard({ company }: CompanyCardProps) {
           <p className="text-muted-foreground leading-relaxed">{activeIntro}</p>
         </div>
 
-        {effectiveTab === 'comparison' ? (
+        {!effectiveTab ? (
+          // displayedTabs pode ficar vazio (empresa sem nenhuma ocorrencia e
+          // "mostrar mais" desligado) - o titulo/intro acima ja cobrem esse
+          // caso, aqui so evitamos forcar um kind inexistente no DataTable.
+          <p className="text-muted-foreground italic">Nenhum relatório para exibir no momento.</p>
+        ) : effectiveTab === 'comparison' ? (
           <ComparisonPanel company={company} />
         ) : isAnalysisKind(effectiveTab) ? (
           <AnalysisPanel company={company} kind={effectiveTab} />
         ) : (
-          <DataTable rows={activeRows} kind={effectiveTab!} />
+          <DataTable rows={activeRows} kind={effectiveTab} />
         )}
 
         {hiddenReportsCount > 0 && (
@@ -262,10 +267,14 @@ function DepreciationPairsTable({ rows }: { rows: NonNullable<ReturnType<typeof 
               <tr key={`${row.assetCode}-${row.depreciationCode}-${index}`} className="hover:bg-primary/5 transition-colors">
                 <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{row.assetCode || '-'}</td>
                 <td className="px-4 py-3 text-sm text-foreground">{row.assetName}</td>
-                <td className="px-4 py-3 text-sm font-mono text-right font-bold text-foreground">{row.assetCurrentBalance || '-'}</td>
+                <td className="px-4 py-3 text-sm font-mono text-right font-bold text-foreground">
+                  {row.assetCurrentBalance === undefined ? '-' : formatNumberAsBrazilianMoney(row.assetCurrentBalance)}
+                </td>
                 <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{row.depreciationCode || '-'}</td>
                 <td className="px-4 py-3 text-sm text-foreground">{row.depreciationName}</td>
-                <td className="px-4 py-3 text-sm font-mono text-right font-bold text-foreground">{row.depreciationCurrentBalance}</td>
+                <td className="px-4 py-3 text-sm font-mono text-right font-bold text-foreground">
+                  {formatNumberAsBrazilianMoney(row.depreciationCurrentBalance)}
+                </td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">
                   <div className="bg-background border border-surface-border px-3 py-1.5 rounded-md shadow-sm line-clamp-2">
                     {row.correctiveAction}
@@ -346,7 +355,15 @@ function ComparisonPanel({ company }: { company: CompanyReport }) {
   );
 }
 
-function ComparisonAccount({ title, row, value }: { title: string; row?: CompanyReport['rows'][number]; value: number }) {
+function ComparisonAccount({
+  title,
+  row,
+  value
+}: {
+  title: string;
+  row?: CompanyReport['rows'][number] | undefined;
+  value: number;
+}) {
   return (
     <div className="bg-surface-50 border border-surface-border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-4 border-b border-surface-border pb-2">{title}</h5>

@@ -1,5 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+/* Outfit e JetBrains Mono sao carregadas via <link> em index.html (com
+   preconnect), nao aqui - um @import de CSS bloqueia o parse da folha de
+   estilo e nao se beneficia do preconnect, alem de duplicar a requisicao. */
 
 @tailwind base;
 @tailwind components;

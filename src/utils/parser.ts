@@ -6,7 +6,8 @@ import { absoluteCurrentBalance, absoluteValue, ledgerBalanceMismatch, signedCur
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-interface TextItem {
+// Exportado para permitir teste unitario direto (sem depender de um PDF real).
+export interface TextItem {
   text: string;
   x: number;
   y: number;
@@ -21,7 +22,10 @@ interface PageLine {
 
 interface PdfTextItem {
   str: string;
-  transform: number[];
+  // pdf.js sempre entrega uma matriz de transformacao afim 2D [a, b, c, d, e, f]
+  // (e/f sao os deslocamentos x/y usados abaixo). Tipar como tupla fixa em vez
+  // de number[] preserva isso sob noUncheckedIndexedAccess.
+  transform: [number, number, number, number, number, number];
   width?: number;
 }
 
@@ -48,7 +52,11 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       const items = content.items
         .filter((item) => typeof item === 'object' && item !== null && 'str' in item && 'transform' in item)
         .map((item) => {
-          const textItem = item as PdfTextItem;
+          // pdf.js tipa `transform` como number[] solto; sabemos pela propria
+          // especificacao de content stream do PDF que e sempre um vetor afim
+          // de 6 posicoes, entao a tupla fixa em PdfTextItem e mais precisa que
+          // o tipo de origem - precisa passar por `unknown` para essa correcao.
+          const textItem = item as unknown as PdfTextItem;
           return {
             text: textItem.str,
             x: textItem.transform[4],
@@ -158,8 +166,17 @@ function yieldToBrowser(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function groupItemsIntoLines(items: TextItem[]): PageLine[] {
-  const buckets: TextItem[][] = [];
+// O balde guarda o Y de ancora ao lado dos itens para nunca precisar indexar
+// `items[0]` so para comparar posicao - sob noUncheckedIndexedAccess isso
+// seria sempre `TextItem | undefined`, mesmo sendo garantidamente nao-vazio
+// (todo balde nasce com pelo menos um item; nunca e esvaziado depois).
+interface LineBucket {
+  y: number;
+  items: TextItem[];
+}
+
+export function groupItemsIntoLines(items: TextItem[]): PageLine[] {
+  const buckets: LineBucket[] = [];
 
   // Os itens ja vem ordenados por Y decrescente, entao todos os fragmentos de
   // uma mesma linha chegam em sequencia: basta comparar com o ultimo balde.
@@ -169,15 +186,21 @@ function groupItemsIntoLines(items: TextItem[]): PageLine[] {
     .sort((a, b) => b.y - a.y || a.x - b.x)
     .forEach((item) => {
       const lastBucket = buckets[buckets.length - 1];
-      if (lastBucket && Math.abs(lastBucket[0].y - item.y) <= 3) {
-        lastBucket.push(item);
+      if (lastBucket && Math.abs(lastBucket.y - item.y) <= 3) {
+        lastBucket.items.push(item);
       } else {
-        buckets.push([item]);
+        buckets.push({ y: item.y, items: [item] });
       }
     });
 
   return buckets.map((bucket) => {
-    const sorted = bucket.sort((a, b) => a.x - b.x);
+    const sorted = bucket.items.sort((a, b) => a.x - b.x);
+    // Todo LineBucket nasce com >=1 item e nunca e esvaziado, entao `first`
+    // sempre existe - mas noUncheckedIndexedAccess nao consegue provar isso
+    // so olhando o tipo `TextItem[]`.
+    const first = sorted[0];
+    if (!first) return { page: 0, text: '' };
+
     const pieces: string[] = [];
     let previousX = 0;
 
@@ -200,7 +223,7 @@ function groupItemsIntoLines(items: TextItem[]): PageLine[] {
     });
 
     return {
-      page: sorted[0].page,
+      page: first.page,
       text: normalizeLine(pieces.join(''))
     };
   });
@@ -217,9 +240,13 @@ function extractMetadata(text: string, fileName: string) {
     lines.find((line) => /LTDA|S\/A|EIRELI|ME\b|EPP\b/i.test(line));
 
   const companyCodeMatch = companyLine?.match(companyCodeRegex);
-  const companyCode = companyCodeMatch ? `${companyCodeMatch[1]}-${companyCodeMatch[2]}` : undefined;
+  // companyCodeRegex tem exatamente 3 grupos de captura, nenhum opcional -
+  // se o match existe, os 3 grupos sempre existem. noUncheckedIndexedAccess
+  // nao rastreia contagem de grupos de regex, entao a asserção documenta essa
+  // garantia estrutural em vez de suprimir um risco desconhecido.
+  const companyCode = companyCodeMatch ? `${companyCodeMatch[1]!}-${companyCodeMatch[2]!}` : undefined;
   const companyName = companyCodeMatch
-    ? companyCodeMatch[3].trim()
+    ? companyCodeMatch[3]!.trim()
     : companyLine
       ? companyLine.replace(/^\(\s*[^)]*\)\s*/, '').trim() || companyLine
       : fileName.replace(/\.pdf$/i, '');
@@ -261,7 +288,7 @@ function extractLedgerLines(lines: PageLine[]) {
   return { rows, unclassified };
 }
 
-function mergeContinuationLines(lines: PageLine[]): { merged: PageLine[]; orphanFragments: UnclassifiedLine[] } {
+export function mergeContinuationLines(lines: PageLine[]): { merged: PageLine[]; orphanFragments: UnclassifiedLine[] } {
   const merged: PageLine[] = [];
   const orphanFragments: UnclassifiedLine[] = [];
 
@@ -309,7 +336,7 @@ function mergeContinuationLines(lines: PageLine[]): { merged: PageLine[]; orphan
  * repetida com valores DIFERENTES e mantida, porque pode ser desdobramento
  * legitimo, mas gera aviso para conferencia manual.
  */
-function dedupeLedgerRows(rows: LedgerLine[]): { rows: LedgerLine[]; warnings: string[] } {
+export function dedupeLedgerRows(rows: LedgerLine[]): { rows: LedgerLine[]; warnings: string[] } {
   const seen = new Set<string>();
   const byAccount = new Map<string, Set<string>>();
   const deduped: LedgerLine[] = [];
@@ -343,12 +370,14 @@ function dedupeLedgerRows(rows: LedgerLine[]): { rows: LedgerLine[]; warnings: s
   return { rows: deduped, warnings };
 }
 
-function parseLedgerLine(rawLine: string, page: number): LedgerLine | null {
+export function parseLedgerLine(rawLine: string, page: number): LedgerLine | null {
   const raw = normalizeLine(rawLine.replace(moneyBoundaryRegex, '$1 $2'));
   const accountMatch = raw.match(accountRegex);
   if (!accountMatch) return null;
 
-  const account = accountMatch[1];
+  // accountRegex tem exatamente 1 grupo de captura, sempre presente quando
+  // o match existe.
+  const account = accountMatch[1]!;
   let rest = raw.slice(accountMatch[0].length).trim();
   let code: string | undefined;
 
@@ -367,16 +396,25 @@ function parseLedgerLine(rawLine: string, page: number): LedgerLine | null {
   const moneyMatches = [...rest.matchAll(moneyRegex)];
   if (moneyMatches.length < 4) return null;
 
-  const lastFour = moneyMatches.slice(-4);
-  const firstMoney = lastFour[0];
-  const firstMoneyIndex = firstMoney.index ?? -1;
+  // moneyMatches.length >= 4 (checado acima) garante que slice(-4) sempre
+  // retorna exatamente 4 itens - a asserção de tupla documenta essa garantia
+  // de runtime, que o tipo `RegExpMatchArray[]` generico nao expressa.
+  const [previousMatch, debitMatch, creditMatch, currentMatch] = moneyMatches.slice(-4) as [
+    RegExpMatchArray,
+    RegExpMatchArray,
+    RegExpMatchArray,
+    RegExpMatchArray
+  ];
+  const firstMoneyIndex = previousMatch.index ?? -1;
   if (firstMoneyIndex < 0) return null;
 
   const name = rest.slice(0, firstMoneyIndex).trim();
   if (!name) return null;
 
-  const values = lastFour.map((match) => match[0]);
-  const [previousBalance, debit, credit, currentBalance] = values;
+  const previousBalance = previousMatch[0];
+  const debit = debitMatch[0];
+  const credit = creditMatch[0];
+  const currentBalance = currentMatch[0];
 
   // `slice(-4)` assume que os quatro ultimos valores sao as colunas corretas.
   // Se um numero do nome da conta entrar na conta, as colunas saem
@@ -844,10 +882,10 @@ function buildAnalysis11(rows: LedgerLine[]): AnalysisReport {
       depreciationPairs.push({
         assetCode: '',
         assetName: 'Bem equivalente nao localizado',
-        assetCurrentBalance: '',
+        assetCurrentBalance: undefined,
         depreciationCode: depreciationRow.code ?? '',
         depreciationName: depreciationRow.name,
-        depreciationCurrentBalance: depreciationRow.currentBalance,
+        depreciationCurrentBalance: depreciationValue,
         correctiveAction: 'Localizar ou cadastrar o bem correspondente a esta depreciacao/exaustao e revisar a classificacao contabil.'
       });
       calculationItems.push({
@@ -865,10 +903,10 @@ function buildAnalysis11(rows: LedgerLine[]): AnalysisReport {
       depreciationPairs.push({
         assetCode: matchedAsset.code ?? '',
         assetName: matchedAsset.name,
-        assetCurrentBalance: matchedAsset.currentBalance,
+        assetCurrentBalance: assetValue,
         depreciationCode: depreciationRow.code ?? '',
         depreciationName: depreciationRow.name,
-        depreciationCurrentBalance: depreciationRow.currentBalance,
+        depreciationCurrentBalance: depreciationValue,
         correctiveAction: 'Revisar o pareamento entre o bem e sua depreciacao, pois a depreciacao acumulada esta maior que o valor do bem.'
       });
       calculationItems.push(

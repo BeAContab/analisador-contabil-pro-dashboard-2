@@ -134,12 +134,17 @@ export function reportFileName(company: CompanyReport, extension: 'xlsx' | 'pdf'
   return `${slugify(company.companyName)}_relatorios-consolidados.${extension}`;
 }
 
+/** `InvertedBalanceRow` e a unica variante com `alertType` - o discriminante e a propria presenca do campo, sem precisar de tag explicita. */
+function isInvertedBalanceRow(row: LedgerLine | InvertedBalanceRow | undefined): row is InvertedBalanceRow {
+  return row !== undefined && 'alertType' in row;
+}
+
 export function correctiveAction(kind: ReportKind, row?: LedgerLine | InvertedBalanceRow) {
   if (kind === 'inverted') {
-    if ((row as InvertedBalanceRow | undefined)?.alertType === 'Ativo com saldo C') {
+    if (isInvertedBalanceRow(row) && row.alertType === 'Ativo com saldo C') {
       return 'Revisar classificacao, natureza e lancamentos da conta do ativo para eliminar saldo credor indevido no encerramento.';
     }
-    if ((row as InvertedBalanceRow | undefined)?.alertType === 'Passivo/PL com saldo D') {
+    if (isInvertedBalanceRow(row) && row.alertType === 'Passivo/PL com saldo D') {
       return 'Revisar classificacao, natureza e lancamentos da conta do passivo ou PL para eliminar saldo devedor indevido no encerramento.';
     }
     return 'Revisar a natureza contabil e os lancamentos que formaram o saldo final para corrigir a inversao identificada.';
@@ -464,10 +469,10 @@ function depreciationBody(rows: DepreciationPairRow[]) {
   return rows.map((row) => [
     row.assetCode,
     row.assetName,
-    row.assetCurrentBalance,
+    row.assetCurrentBalance === undefined ? '-' : formatNumberAsBrazilianMoney(row.assetCurrentBalance),
     row.depreciationCode,
     row.depreciationName,
-    row.depreciationCurrentBalance,
+    formatNumberAsBrazilianMoney(row.depreciationCurrentBalance),
     row.correctiveAction
   ]);
 }

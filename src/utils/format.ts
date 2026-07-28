@@ -40,7 +40,8 @@ export function parseBrazilianMoney(value: string): number {
 
 export function balanceNature(value: string): 'D' | 'C' | null {
   const match = value.trim().match(/([DC])\s*$/i);
-  return match ? (match[1].toUpperCase() as 'D' | 'C') : null;
+  // O unico grupo de captura da regex e obrigatorio: se `match` existe, `[1]` existe.
+  return match ? (match[1]!.toUpperCase() as 'D' | 'C') : null;
 }
 
 export function isZeroMoney(value: string, parsedValue: number): boolean {
