@@ -58,7 +58,7 @@ export function App() {
       <Sidebar currentView={view} onNavigate={handleNavigate} />
 
       <div className="flex-1 relative flex flex-col h-full overflow-y-auto overflow-x-hidden">
-        <main className="flex-1 w-full max-w-container-max mx-auto px-6 py-8 md:px-12 flex flex-col gap-xl">
+        <main id="main-content" className="flex-1 w-full max-w-container-max mx-auto px-6 py-8 md:px-12 flex flex-col gap-xl">
           {view === 'main' && (
             <div className="space-y-xl animate-in fade-in duration-500">
               

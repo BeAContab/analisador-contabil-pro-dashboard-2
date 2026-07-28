@@ -57,6 +57,15 @@ export default {
         "outline-variant": "var(--surface-border)",
         "error-container": "#ffdad6",
         "on-error-container": "#93000a",
+        // "secondary" e um alias de texto para "muted-foreground": so era usado
+        // como text-secondary (label/paragrafo secundario), nunca como bg-/border-.
+        "secondary": "var(--muted-foreground)",
+        "primary-container": "var(--primary-container)",
+        "on-primary-container": "var(--on-primary-container)",
+        "secondary-container": "var(--secondary-container)",
+        "on-secondary-container": "var(--on-secondary-container)",
+        "tertiary-container": "var(--tertiary-container)",
+        "on-tertiary-container": "var(--on-tertiary-container)",
       },
       boxShadow: {
         'glass': '0 4px 30px rgba(0, 0, 0, 0.1)',

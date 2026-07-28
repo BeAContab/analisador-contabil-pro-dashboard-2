@@ -35,6 +35,16 @@
 
     --muted: #f4f4f5; /* zinc-100 */
     --muted-foreground: #71717a; /* zinc-500 */
+
+    /* Tons "container" (badges/ícones) usados nas páginas institucionais.
+       Cada par e um fundo suave + texto saturado da mesma familia de cor,
+       para distinguir visualmente primary/secondary/tertiary. */
+    --primary-container: #ccfbf1; /* teal-100 */
+    --on-primary-container: #134e4a; /* teal-900 */
+    --secondary-container: #e0f2fe; /* sky-100 */
+    --on-secondary-container: #0c4a6e; /* sky-900 */
+    --tertiary-container: #fef3c7; /* amber-100 */
+    --on-tertiary-container: #78350f; /* amber-900 */
   }
 
   .dark {
@@ -66,6 +76,13 @@
 
     --muted: #27272a; /* zinc-800 */
     --muted-foreground: #a1a1aa; /* zinc-400 */
+
+    --primary-container: #134e4a; /* teal-900 */
+    --on-primary-container: #99f6e4; /* teal-200 */
+    --secondary-container: #0c4a6e; /* sky-900 */
+    --on-secondary-container: #bae6fd; /* sky-200 */
+    --tertiary-container: #78350f; /* amber-900 */
+    --on-tertiary-container: #fde68a; /* amber-200 */
   }
 }
 

@@ -29,9 +29,9 @@ export function Dropzone({
     <section className="w-full space-y-8 animate-in slide-in-from-bottom-4 duration-700 fade-in">
       {/* Dropzone Area */}
       <div
-        className={`relative group border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center gap-6 transition-all duration-300 min-h-[350px] cursor-pointer overflow-hidden ${
-          isDragging 
-            ? 'border-primary bg-primary/5 scale-[1.02] shadow-glass-lg' 
+        className={`relative group border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center gap-6 transition-all duration-300 min-h-[350px] cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background ${
+          isDragging
+            ? 'border-primary bg-primary/5 scale-[1.02] shadow-glass-lg'
             : 'border-surface-border bg-surface-50 backdrop-blur-sm hover:border-primary/50 hover:bg-surface-80 hover:shadow-glass'
         }`}
         onDragOver={onDragOver}
@@ -62,12 +62,13 @@ export function Dropzone({
           Ou selecione os arquivos
         </label>
         
-        <input 
+        <input
           id="pdf-upload"
-          type="file" 
-          accept="application/pdf,.pdf" 
-          multiple 
-          className="absolute inset-0 opacity-0 cursor-pointer z-20" 
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          aria-label="Selecionar arquivos PDF de balancetes para análise"
+          className="absolute inset-0 opacity-0 cursor-pointer z-20"
           onChange={onFileChange}
         />
       </div>

@@ -33,26 +33,34 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
 
   return (
     <aside className="w-64 flex-shrink-0 bg-surface border-r border-surface-border flex flex-col h-full z-10 transition-colors duration-300">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        Pular para o conteúdo principal
+      </a>
+
       <div className="p-6 border-b border-surface-border">
         <h1 className="text-xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-accent">monitoring</span>
+          <span className="material-symbols-outlined text-accent" aria-hidden="true">monitoring</span>
           Analisador Pro
         </h1>
       </div>
-      
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+
+      <nav aria-label="Navegação principal" className="flex-1 p-4 space-y-2 overflow-y-auto">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-3">Menu</div>
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
+            aria-current={currentView === item.id ? 'page' : undefined}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
               currentView === item.id
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-surface-border/50 hover:text-foreground'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">{item.icon}</span>
             {item.label}
           </button>
         ))}
@@ -61,9 +69,10 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
       <div className="p-4 border-t border-surface-border flex flex-col gap-4">
         <button
           onClick={() => setIsDark(!isDark)}
+          aria-pressed={isDark}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface-border/50 hover:text-foreground transition-all w-full"
         >
-          <span className="material-symbols-outlined text-[20px]">
+          <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
             {isDark ? 'light_mode' : 'dark_mode'}
           </span>
           {isDark ? 'Modo Claro' : 'Modo Escuro'}

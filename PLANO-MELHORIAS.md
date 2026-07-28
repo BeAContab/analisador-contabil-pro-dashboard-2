@@ -1,6 +1,6 @@
 # Plano de Implementação Faseado — Analisador Contábil Pro Dashboard
 
-> **Status:** Fases 1 e 2 concluídas na branch `fase-1-seguranca-privacidade`. Fases 3 a 6 pendentes.
+> **Status:** Fases 1, 2, 3 e 4 concluídas na branch `fase-1-seguranca-privacidade`. Fases 5 e 6 pendentes.
 
 ## Contexto
 
@@ -57,7 +57,9 @@ Itens:
 
 ---
 
-## Fase 3 — Estilos Tailwind quebrados
+## Fase 3 — Estilos Tailwind quebrados ✅ CONCLUÍDA
+
+> Aplicada na branch `fase-1-seguranca-privacidade`. Decisão em 3.1: manter os dois sistemas (não migrar tudo para o novo), mas fechar 100% da cobertura — só `text-secondary` e os 3 pares `*-container`/`on-*-container` estavam de fato quebrados (as classes `surface-container-*` já resolviam corretamente). `text-secondary` virou alias de `var(--muted-foreground)`; os pares container ganharam 3 novos tokens de CSS (`--primary-container`, `--secondary-container`, `--tertiary-container` + seus `on-*`) com valores distintos em teal/sky/amber para diferenciar visualmente os 4 badges de ícone. Validado em light e dark mode via computed styles e screenshot nas 3 páginas afetadas.
 
 **Modelo recomendado: Sonnet 5 · Esforço: Médio (~1-2 dias)**
 Justificativa: é essencialmente um trabalho de design system — decidir a direção dos tokens e mapear classes ausentes exige julgamento de contraste/dark mode, mas dentro de um escopo bem definido pela auditoria (lista exata de classes e arquivos afetados), sem ambiguidade de negócio ou risco de segurança. Complexidade média o suficiente para não ser puramente mecânico.
@@ -69,7 +71,9 @@ Itens:
 
 ---
 
-## Fase 4 — Acessibilidade
+## Fase 4 — Acessibilidade ✅ CONCLUÍDA
+
+> Aplicada na branch `fase-1-seguranca-privacidade`. Hook compartilhado `src/hooks/useFocusTrap.ts` criado e reaproveitado entre `ChatbotFab` e `ProcessingOverlay`, como previsto. Testado via automação no navegador: Tab/Shift+Tab fazem loop dentro do drawer (6 elementos focáveis), Escape fecha e devolve o foco ao FAB, `Enter`/`Space` ativam o `CompanyOverviewCard`, `aria-sort` alterna `ascending`/`descending` ao clicar no header, skip-link funcional, e o limite de 40MB por arquivo bloqueia upload com mensagem clara (testado com arquivo sintético de 41MB).
 
 **Modelo recomendado: Sonnet 5 · Esforço: Médio (~1-2 dias)**
 Justificativa: a maioria dos itens é aplicação de atributos ARIA padrão (mecânico), mas dois itens (drawer do chatbot e overlay de processamento) exigem implementar focus trap e gestão de foco reais, que precisam de teste manual de teclado e não são apenas "adicionar um atributo" — isso eleva a fase inteira de Haiku para Sonnet, para manter consistência de padrão entre os componentes reutilizáveis (o hook de focus trap criado em 4.1 deve ser reaproveitado em 4.6).

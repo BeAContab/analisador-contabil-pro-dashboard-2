@@ -2,6 +2,13 @@ import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from 're
 import { CompanyReport } from '../types';
 import { parsePdfFile } from '../utils/parser';
 
+// Limites defensivos para nao travar a thread principal com um lote
+// desproporcional. Balancetes reais (ver arquivos_de_exemplo/) ficam na casa
+// de algumas centenas de KB; 40 MB e generoso o bastante para nao incomodar
+// casos legitimos, mas barra um upload acidental de arquivo gigante/errado.
+const MAX_FILE_SIZE_BYTES = 40 * 1024 * 1024;
+const MAX_FILES_PER_BATCH = 40;
+
 export function useFileProcessing() {
   const [files, setFiles] = useState<File[]>([]);
   const [reports, setReports] = useState<CompanyReport[]>([]);
@@ -39,7 +46,14 @@ export function useFileProcessing() {
     const pdfs = selected.filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
     const invalidCount = selected.length - pdfs.length;
 
-    if (invalidCount > 0) {
+    const withinSizeLimit = pdfs.filter((file) => file.size <= MAX_FILE_SIZE_BYTES);
+    const oversizedCount = pdfs.length - withinSizeLimit.length;
+
+    if (oversizedCount > 0) {
+      setMessage(
+        `${oversizedCount} arquivo(s) acima do limite de ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB foram ignorados.`
+      );
+    } else if (invalidCount > 0) {
       setMessage('Arquivo inválido. Envie apenas arquivos PDF.');
     } else {
       setMessage('');
@@ -47,8 +61,17 @@ export function useFileProcessing() {
 
     setFiles((current) => {
       const known = new Set(current.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
-      const next = pdfs.filter((file) => !known.has(`${file.name}-${file.size}-${file.lastModified}`));
-      return [...current, ...next];
+      const next = withinSizeLimit.filter((file) => !known.has(`${file.name}-${file.size}-${file.lastModified}`));
+      const combined = [...current, ...next];
+
+      if (combined.length > MAX_FILES_PER_BATCH) {
+        setMessage(
+          `Limite de ${MAX_FILES_PER_BATCH} arquivos por lote. Os primeiros ${MAX_FILES_PER_BATCH} foram mantidos na fila.`
+        );
+        return combined.slice(0, MAX_FILES_PER_BATCH);
+      }
+
+      return combined;
     });
   }
 

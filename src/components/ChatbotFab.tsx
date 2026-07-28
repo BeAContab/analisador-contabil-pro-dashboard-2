@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { CompanyReport } from '../types';
 import {
   buildChatFooterNote,
@@ -62,6 +63,11 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   // A IA so e acionada quando existe chave E o usuario autorizou o envio.
   const isGeminiActive = Boolean(activeApiKey) && consentGranted;
   const totalOccurrences = useMemo(() => sumOccurrences(reports), [reports]);
+
+  const handleClose = useCallback(() => setIsOpen(false), []);
+  // Ao abrir: foco vai para dentro do drawer e fica preso nele; Escape fecha;
+  // ao fechar, o foco volta para o elemento que abriu o assistente (o FAB).
+  const drawerRef = useFocusTrap<HTMLDivElement>(isOpen, handleClose);
 
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -233,13 +239,21 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   return (
     <>
       {/* Backdrop para o Drawer */}
-      <div 
-        className={`fixed inset-0 bg-background/40 backdrop-blur-sm z-[70] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
-        onClick={() => setIsOpen(false)}
+      <div
+        className={`fixed inset-0 bg-background/40 backdrop-blur-sm z-[70] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={handleClose}
+        aria-hidden="true"
       ></div>
 
       {/* Side Drawer */}
-      <div className={`fixed top-0 right-0 h-screen w-[420px] max-w-[100vw] bg-surface border-l border-surface-border shadow-glass-lg z-[80] flex flex-col transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Assistente de IA"
+        tabIndex={-1}
+        className={`fixed top-0 right-0 h-screen w-[420px] max-w-[100vw] bg-surface border-l border-surface-border shadow-glass-lg z-[80] flex flex-col transition-transform duration-500 ease-in-out outline-none ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
         <header className="bg-primary px-6 py-6 text-primary-foreground flex-shrink-0 relative overflow-hidden">
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="flex items-start justify-between gap-4 relative z-10">
@@ -261,9 +275,10 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 transition-colors hover:bg-white/20"
                 title="Fechar chatbot"
+                aria-label="Fechar assistente de IA"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -363,7 +378,13 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-surface-30 p-5 flex flex-col gap-6 scrollbar-hide">
+        <div
+          ref={scrollRef}
+          role="log"
+          aria-live="polite"
+          aria-atomic="false"
+          className="flex-1 overflow-y-auto bg-surface-30 p-5 flex flex-col gap-6 scrollbar-hide"
+        >
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <article

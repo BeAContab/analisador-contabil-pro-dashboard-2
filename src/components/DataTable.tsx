@@ -186,8 +186,17 @@ function Th({
   align?: 'left' | 'right';
 }) {
   const isActive = activeSort === sortKey;
+  const ariaSort: 'ascending' | 'descending' | 'none' = isActive
+    ? direction === 'asc'
+      ? 'ascending'
+      : 'descending'
+    : 'none';
+
   return (
-    <th className={`px-4 py-4 font-bold text-xs text-muted-foreground uppercase tracking-wider ${align === 'right' ? 'text-right' : ''}`}>
+    <th
+      aria-sort={ariaSort}
+      className={`px-4 py-4 font-bold text-xs text-muted-foreground uppercase tracking-wider ${align === 'right' ? 'text-right' : ''}`}
+    >
       <button
         type="button"
         onClick={() => onSort(sortKey)}
@@ -195,7 +204,7 @@ function Th({
         style={{ justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}
       >
         {label}
-        <span className={`material-symbols-outlined text-[16px] transition-all duration-300 ${isActive ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-50'} ${direction === 'desc' ? 'rotate-180' : ''}`}>
+        <span className={`material-symbols-outlined text-[16px] transition-all duration-300 ${isActive ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-50'} ${direction === 'desc' ? 'rotate-180' : ''}`} aria-hidden="true">
           arrow_upward
         </span>
       </button>

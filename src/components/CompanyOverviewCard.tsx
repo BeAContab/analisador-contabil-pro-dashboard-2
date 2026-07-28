@@ -13,9 +13,18 @@ export function CompanyOverviewCard({ company, onClick }: CompanyOverviewCardPro
   const hasAlerts = visibleTabs.length > 0 || hasErrors || hasUnclassified;
 
   return (
-    <div 
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`glass-panel p-6 cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      aria-label={`Ver detalhes de ${company.companyName}`}
+      className={`glass-panel p-6 cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
         hasAlerts ? 'hover:border-error/40' : 'hover:border-success/40'
       }`}
     >
