@@ -8,8 +8,12 @@ export default defineConfig({
     // gzip e brotli pre-comprimidos em build; a maioria dos hosts estaticos
     // (Vercel, Nginx, CDNs) serve o .gz/.br automaticamente quando presente,
     // evitando comprimir on-the-fly a cada request dos chunks pesados abaixo.
-    compression({ algorithm: 'gzip' }),
-    compression({ algorithm: 'brotliCompress', exclude: [/\.gz$/] })
+    //
+    // Os dois algoritmos vao numa unica instancia via `algorithms`. Registrar
+    // duas instancias de `compression()` tambem produz a saida correta, mas
+    // cada uma reemite os arquivos da outra e o build fica cheio de
+    // "overwrites a previously emitted file".
+    compression({ algorithms: ['gzip', 'brotliCompress'] })
   ],
   build: {
     // "hidden" gera o .map sem referenciar via comment no bundle publicado -

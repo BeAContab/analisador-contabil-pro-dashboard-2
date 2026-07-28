@@ -1,6 +1,18 @@
 import { AnalysisCalculation, AnalysisKind, CompanyReport, DepreciationPairRow, InvertedBalanceRow, LedgerLine, ReportKind } from '../types';
 import { classifyAccount, formatNumberAsBrazilianMoney, formatNumberAsPercentage, nowLabel, slugify } from './format';
 import { signedCurrentBalance } from './balance';
+import type { Table, UserOptions } from 'jspdf-autotable';
+
+// jspdf-autotable grava o resultado da ultima tabela em `doc.lastAutoTable`,
+// mas nao declara essa propriedade nos tipos do jsPDF (usa `jsPDFDocument = any`
+// internamente). A augmentation abaixo registra o contrato real usando o tipo
+// `Table` publicado pela propria lib, o que dispensa o cast que existia em
+// `getFinalY` e faz o TypeScript acompanhar mudancas futuras de `Table`.
+declare module 'jspdf' {
+  interface jsPDF {
+    lastAutoTable?: Table;
+  }
+}
 
 const balanceColumns = [
   'Natureza',
@@ -398,7 +410,10 @@ type JsPdfInstance = InstanceType<typeof import('jspdf').default>;
 
 function addPdfSection(
   doc: JsPdfInstance,
-  autoTable: (doc: JsPdfInstance, options: object) => void,
+  // `UserOptions` vem da propria jspdf-autotable: se a lib mudar o formato das
+  // opcoes numa versao futura, o erro aparece aqui em vez de so em runtime
+  // (antes esse parametro era `object`, que aceitava qualquer coisa).
+  autoTable: (doc: JsPdfInstance, options: UserOptions) => void,
   title: string,
   columns: string[],
   body: Array<Array<string | number>>,
@@ -588,7 +603,8 @@ function comparisonFormula(company: CompanyReport): string {
 }
 
 function getFinalY(doc: JsPdfInstance) {
-  return (doc as JsPdfInstance & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 150;
+  // Sem cast: `lastAutoTable` agora vem da module augmentation no topo do arquivo.
+  return doc.lastAutoTable?.finalY ?? 150;
 }
 
 function formatCalculationValue(value: number, format: 'money' | 'percentage' = 'money') {
