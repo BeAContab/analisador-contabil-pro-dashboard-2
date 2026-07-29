@@ -19,8 +19,16 @@ export interface CompanyAlias {
   alias: string;
 }
 
-/** Captura CNPJ (com ou sem mascara) e CPF em qualquer texto de saida. */
-const documentNumberRegex = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b|\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g;
+/**
+ * Captura CNPJ (com ou sem mascara) e CPF em qualquer texto de saida.
+ *
+ * O CNPJ passou a aceitar letras A-Z nos 12 primeiros caracteres a partir do
+ * novo formato alfanumerico da Receita Federal (2026) - so os 2 digitos
+ * verificadores continuam numericos. Sem isso, um CNPJ nesse formato passaria
+ * batido por esta rede de seguranca e vazaria para o Gemini em texto puro.
+ * CPF continua exclusivamente numerico (nenhuma mudanca anunciada).
+ */
+const documentNumberRegex = /\b[A-Z\d]{2}\.?[A-Z\d]{3}\.?[A-Z\d]{3}\/?[A-Z\d]{4}-?\d{2}\b|\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/gi;
 
 const DOCUMENT_PLACEHOLDER = '[documento removido]';
 

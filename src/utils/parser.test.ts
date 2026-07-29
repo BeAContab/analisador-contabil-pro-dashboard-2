@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TextItem, dedupeLedgerRows, groupItemsIntoLines, mergeContinuationLines, parseLedgerLine } from './parser';
+import { TextItem, dedupeLedgerRows, extractMetadata, groupItemsIntoLines, mergeContinuationLines, parseLedgerLine } from './parser';
 import { LedgerLine } from '../types';
 
 function item(text: string, x: number, width: number, y = 700, page = 1): TextItem {
@@ -116,5 +116,24 @@ describe('dedupeLedgerRows', () => {
     expect(rows).toHaveLength(2);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('1.1.01');
+  });
+});
+
+describe('extractMetadata (CNPJ)', () => {
+  it('extracts a traditional all-digit CNPJ', () => {
+    const meta = extractMetadata('Empresa Teste LTDA\nCNPJ: 12.345.678/0001-90\n', 'balancete.pdf');
+    expect(meta.cnpj).toBe('12.345.678/0001-90');
+  });
+
+  // Formato alfanumerico da Receita Federal (2026): 12 primeiros caracteres
+  // podem ser letras ou digitos, os 2 ultimos (DV) continuam numericos.
+  it('extracts an alphanumeric CNPJ (new Receita Federal format)', () => {
+    const meta = extractMetadata('Empresa Teste LTDA\nCNPJ: 12.ABC.345/01DE-35\n', 'balancete.pdf');
+    expect(meta.cnpj).toBe('12.ABC.345/01DE-35');
+  });
+
+  it('falls back to the not-identified message when no CNPJ is present', () => {
+    const meta = extractMetadata('Empresa Teste LTDA\nsem numero de documento\n', 'balancete.pdf');
+    expect(meta.cnpj).toBe('CNPJ não identificado');
   });
 });

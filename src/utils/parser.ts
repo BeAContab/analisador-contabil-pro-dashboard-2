@@ -30,7 +30,11 @@ interface PdfTextItem {
 }
 
 const accountRegex = /^\s*([1-9](?:\.\d+)*)(?=\s|$)/;
-const cnpjRegex = /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/;
+// A partir de 2026 a Receita Federal emite CNPJ alfanumerico: os 12 primeiros
+// caracteres (base + ordem) podem ser letras A-Z ou digitos, so os 2 digitos
+// verificadores finais continuam numericos. O app nunca calcula/valida o DV,
+// so extrai a string para exibicao - por isso basta ampliar o charset.
+const cnpjRegex = /\b[A-Z\d]{2}\.[A-Z\d]{3}\.[A-Z\d]{3}\/[A-Z\d]{4}-\d{2}\b/i;
 const companyCodeRegex = /^\(\s*(\d+)\s*-\s*(\d+)\s*\)\s*(.+)$/;
 const moneyRegex = /\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?|\(?\d+,\d{2}\)?[DC]?|\b0(?:[,.]00)?\b/gi;
 const moneyBoundaryRegex = /([A-Za-zÀ-ÿ])(\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?)/g;
@@ -233,7 +237,7 @@ export function groupItemsIntoLines(items: TextItem[]): PageLine[] {
   });
 }
 
-function extractMetadata(text: string, fileName: string) {
+export function extractMetadata(text: string, fileName: string) {
   const lines = text
     .split(/\r?\n/)
     .map((line) => normalizeLine(line))
@@ -547,7 +551,7 @@ function buildAnalysis1(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis1',
-    title: 'Clientes com Saldo Atual Baixo',
+    title: 'Total de Clientes com Saldo Baixo',
     intro: 'Mostra a conta 1.1.02 (Clientes) apenas quando o S. Atual estiver com natureza D e valor menor que 10,00.',
     message: clientRow
       ? isAttention
@@ -572,7 +576,7 @@ function buildAnalysis2(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis2',
-    title: 'Cliente Pessoa Física Fora da Regra',
+    title: 'Cliente PF Não Zerado no Período',
     intro: 'Procura a linha Cliente Pessoa Física com Cod. R. 142 e alerta quando S. Anterior ou S. Atual não estão zerados, ou quando Débito e Crédito são diferentes.',
     message:
       matchedRows.length === 0
@@ -639,7 +643,7 @@ function buildAnalysis4(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis4',
-    title: 'Clientes com Saldo Residual',
+    title: 'Clientes (Individuais) com Saldo Residual',
     intro: 'Mostra contas da família 1.1.02 quando o S. Atual estiver com natureza D, maior que 0 e menor ou igual a 10,00.',
     message:
       clientRows.length > 0
@@ -657,7 +661,7 @@ function buildAnalysis5(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis5',
-    title: 'Clientes sem Crédito no Período',
+    title: 'Clientes sem Recebimento no Período',
     intro: 'Mostra contas da família 1.1.02 quando S. Anterior e Débito são maiores que zero e o Crédito está zerado.',
     message:
       flaggedRows.length > 0
@@ -679,7 +683,7 @@ function buildAnalysis6(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis6',
-    title: 'Fornecedores sem Débito no Período',
+    title: 'Fornecedores sem Pagamento no Período',
     intro: 'Mostra contas da família 2.1.03 quando S. Anterior, Crédito e S. Atual são maiores que zero e o Débito está zerado.',
     message:
       flaggedRows.length > 0
@@ -699,7 +703,7 @@ function buildAnalysis7(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis7',
-    title: 'Validação Estoques x Fornecedores',
+    title: 'Compras x Contas a Pagar',
     intro: 'Compara o Débito da conta 1.1.08 com o Crédito da conta 2.1.03 e alerta quando Estoques fica maior que Fornecedores.',
     message: missingSupplier
       ? 'Atenção: não foi possível localizar a conta 2.1.03 para comparação.'
@@ -723,7 +727,7 @@ function buildAnalysis8(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis8',
-    title: 'Fornecedores com Saldo Residual',
+    title: 'Fornecedores (Individuais) com Saldo Residual',
     intro: 'Mostra contas da família 2.1.03 quando o S. Atual estiver com natureza C, maior que 0 e menor ou igual a 10,00.',
     message:
       supplierRows.length > 0
@@ -741,7 +745,7 @@ function buildAnalysis9(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis9',
-    title: 'Fornecedores com Crédito sem Débito',
+    title: 'Fornecedores sem Nenhum Pagamento Registrado',
     intro: 'Mostra contas da família 2.1.03 quando S. Anterior e Crédito são maiores que zero e o Débito está zerado.',
     message:
       flaggedRows.length > 0
@@ -794,7 +798,7 @@ function buildAnalysis10(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis10',
-    title: 'CMV x Receita Mercadorias',
+    title: 'CMV x Receita Total',
     intro:
       'Calcula (Debitos do Cod. R. 3001 menos Creditos do Cod. R. 3001) dividido pela soma dos Creditos dos Cod. R. 2603, 2652 e 2700.',
     message,
@@ -829,7 +833,7 @@ function buildAnalysis11(rows: LedgerLine[]): AnalysisReport {
   if (missingRoots) {
     return {
       kind: 'analysis11',
-      title: 'Depreciacao x Bens',
+      title: 'Depreciacao Acumulada x Bens',
       intro:
         'Compara os valores de S. Atual dos bens dentro de IMOBILIZADO com suas respectivas contas de depreciacao acumulada, excluindo IMOBILIZADO EM ANDAMENTO.',
       message: 'Atencao: nao foi possivel localizar as contas raiz de IMOBILIZADO e/ou (-)DEPRECIACAO/AMORTIZACAO/EXAUSTAO ACUMULADA.',
@@ -923,7 +927,7 @@ function buildAnalysis11(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis11',
-    title: 'Depreciacao x Bens',
+    title: 'Depreciacao Acumulada x Bens',
     intro:
       'Compara os valores de S. Atual de cada bem dentro de IMOBILIZADO com a sua depreciacao equivalente, ignorando C/D e parenteses, e excluindo IMOBILIZADO EM ANDAMENTO.',
     message:
@@ -953,7 +957,7 @@ function buildAnalysis12(rows: LedgerLine[]): AnalysisReport {
 
   return {
     kind: 'analysis12',
-    title: 'Despesas Credoras na Classe 3',
+    title: 'Despesas com Saldo Credor Indevido',
     intro:
       'Verifica contas da classe 3 que deveriam encerrar com S. Atual em D, excluindo os grupos 3, 3.1, 3.1.02, 3.1.03, 3.1.06 e 3.9, com seus respectivos filhos.',
     message:

@@ -65,19 +65,19 @@ export const analysisOrder: AnalysisKind[] = [
 export const reportTabs: Array<{ kind: ReportKind; label: string }> = [
   { kind: 'inverted', label: 'Saldos invertidos' },
   { kind: 'zero', label: 'Contas sem movimentacao' },
-  { kind: 'comparison', label: 'Distribuicao x Resultado' },
-  { kind: 'analysis1', label: 'Clientes com Saldo Atual Baixo' },
-  { kind: 'analysis2', label: 'Cliente Pessoa Fisica Fora da Regra' },
+  { kind: 'comparison', label: 'Distribuicao de Lucros x Resultado' },
+  { kind: 'analysis1', label: 'Total de Clientes com Saldo Baixo' },
+  { kind: 'analysis2', label: 'Cliente PF Nao Zerado no Periodo' },
   { kind: 'analysis3', label: 'Conciliacao Clientes x Receitas Operacionais' },
-  { kind: 'analysis4', label: 'Clientes com Saldo Residual' },
-  { kind: 'analysis5', label: 'Clientes sem Credito no Periodo' },
-  { kind: 'analysis6', label: 'Fornecedores sem Debito no Periodo' },
-  { kind: 'analysis7', label: 'Validacao Estoques x Fornecedores' },
-  { kind: 'analysis8', label: 'Fornecedores com Saldo Residual' },
-  { kind: 'analysis9', label: 'Fornecedores com Credito sem Debito' },
-  { kind: 'analysis10', label: 'CMV x Receita Mercadorias' },
-  { kind: 'analysis11', label: 'Depreciacao x Bens' },
-  { kind: 'analysis12', label: 'Despesas Credoras na Classe 3' }
+  { kind: 'analysis4', label: 'Clientes (Individuais) com Saldo Residual' },
+  { kind: 'analysis5', label: 'Clientes sem Recebimento no Periodo' },
+  { kind: 'analysis6', label: 'Fornecedores sem Pagamento no Periodo' },
+  { kind: 'analysis7', label: 'Compras x Contas a Pagar' },
+  { kind: 'analysis8', label: 'Fornecedores (Individuais) com Saldo Residual' },
+  { kind: 'analysis9', label: 'Fornecedores sem Nenhum Pagamento Registrado' },
+  { kind: 'analysis10', label: 'CMV x Receita Total' },
+  { kind: 'analysis11', label: 'Depreciacao Acumulada x Bens' },
+  { kind: 'analysis12', label: 'Despesas com Saldo Credor Indevido' }
 ];
 
 export function reportRows(company: CompanyReport, kind: ReportKind) {
@@ -105,7 +105,7 @@ export function reportHasOccurrence(company: CompanyReport, kind: ReportKind) {
 export function reportTitle(kind: ReportKind, company?: CompanyReport): string {
   if (kind === 'inverted') return 'Saldos invertidos Ativo/Passivo';
   if (kind === 'zero') return 'Contas sem movimentacao no periodo';
-  if (kind === 'comparison') return 'Comparacao Distribuicao x Resultado';
+  if (kind === 'comparison') return 'Distribuicao de Lucros x Resultado';
   return company?.analysisReports.find((report) => report.kind === kind)?.title ?? kind;
 }
 

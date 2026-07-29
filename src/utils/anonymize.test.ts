@@ -83,6 +83,17 @@ describe('stripDocumentNumbers', () => {
     expect(stripDocumentNumbers('CNPJ 12345678000190 encontrado')).toBe('CNPJ [documento removido] encontrado');
   });
 
+  // Formato alfanumerico da Receita Federal (2026): 12 primeiros caracteres
+  // podem ser letras ou digitos, os 2 ultimos (DV) continuam numericos. Sem
+  // isso o CNPJ passaria batido para o Gemini.
+  it('removes an alphanumeric CNPJ (new Receita Federal format)', () => {
+    expect(stripDocumentNumbers('CNPJ 12.ABC.345/01DE-35 encontrado')).toBe('CNPJ [documento removido] encontrado');
+  });
+
+  it('removes an unmasked alphanumeric CNPJ', () => {
+    expect(stripDocumentNumbers('CNPJ 12ABC34501DE35 encontrado')).toBe('CNPJ [documento removido] encontrado');
+  });
+
   it('removes a CPF', () => {
     expect(stripDocumentNumbers('CPF do socio: 123.456.789-09.')).toBe('CPF do socio: [documento removido].');
   });
