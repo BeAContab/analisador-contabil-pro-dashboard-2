@@ -1,5 +1,41 @@
 ﻿# Changelog
 
+## 1.0.29 - 2026-07-29
+- Investigado alerta de "linhas nao classificadas": medicao real mostrou que a suposta perda de dados era falso positivo causado por cabecalho e rodape de pagina sendo contados como linha nao reconhecida.
+- Parser passou a classificar cada linha do PDF em tres grupos (contabil, estrutural do relatorio, ou nao reconhecida), garantindo que nenhuma linha e descartada sem registro.
+- Contagem de "linhas nao classificadas" caiu de 1002 para 7 nos arquivos de exemplo, sem alterar nenhum valor contabil ja extraido corretamente.
+
+## 1.0.28 - 2026-07-29
+- Renomeados os titulos das 15 analises exibidas no app para nomes mais claros (ex.: "Cliente Pessoa Fisica Fora da Regra" virou "Cliente PF Nao Zerado no Periodo").
+- Adicionado menu lateral recolhivel, alternando entre exibicao completa e barra estreita so com icones, com preferencia salva no navegador.
+- Adicionado suporte ao novo formato de CNPJ alfanumerico da Receita Federal, tanto na leitura dos balancetes quanto na anonimizacao de dados enviados ao assistente de IA.
+
+## 1.0.27 - 2026-07-28
+- Processamento de PDFs movido para uma Web Worker dedicada, liberando a interface principal durante a leitura de arquivos grandes.
+- Adicionado botao para cancelar um processamento em andamento.
+
+## 1.0.26 - 2026-07-28
+- Atualizadas as bibliotecas de geracao de PDF (jsPDF e jspdf-autotable) para as versoes mais recentes, eliminando vulnerabilidades de seguranca conhecidas.
+- Validado que os PDFs exportados permanecem identicos apos a atualizacao das bibliotecas.
+
+## 1.0.25 - 2026-07-28
+- Adicionada suite de testes automatizados, lint e verificacao de tipos ao projeto.
+- Corrigido bug em que uma empresa sem nenhuma ocorrencia identificada quebrava a tela de detalhes.
+
+## 1.0.24 - 2026-07-28
+- Corrigidos estilos quebrados no tema (classes de cor sem efeito visual em telas institucionais).
+- Melhorias de acessibilidade: navegacao por teclado, foco em janelas modais e leitura por leitores de tela.
+- Adicionado limite de tamanho de arquivo no upload de balancetes.
+
+## 1.0.23 - 2026-07-28
+- Corrigido bug de leitura que inflava valores de algumas contas quando o CPF do titular ficava colado ao saldo no PDF, chegando a multiplicar o valor real em ate 295 vezes.
+- Diversos ajustes de robustez no parser: deteccao de contas duplicadas entre paginas, valores negativos truncados e performance no agrupamento de linhas.
+
+## 1.0.22 - 2026-07-28
+- Corrigida contradicao entre a politica de privacidade e o comportamento real do assistente de IA: dados agora sao anonimizados antes do envio, mediante consentimento explicito do usuario.
+- Chave da API Gemini passou a expirar automaticamente apos 30 dias de armazenamento local.
+- Corrigida vulnerabilidade de seguranca na biblioteca `xlsx`.
+
 ## 1.0.21 - 2026-05-29
 - Removido o fluxo legado em Python/Streamlit, mantendo o projeto focado em React + Vite para deploy na Vercel.
 - Assistente de IA passou a persistir a chave Gemini informada pelo usuario em `localStorage`, reaproveitando-a em acessos futuros no mesmo navegador.
