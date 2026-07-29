@@ -36,7 +36,19 @@ export interface CompanyReport {
   cnpj: string;
   period: string;
   rows: LedgerLine[];
+  /**
+   * Linhas que o parser NAO conseguiu interpretar. Deve ficar proximo de zero
+   * num arquivo bem lido - se subir, algo do layout mudou. Cabecalho e rodape
+   * do relatorio ficam em `structuralLines`, nao aqui.
+   */
   unclassified: UnclassifiedLine[];
+  /**
+   * Cabecalho/rodape do proprio relatorio (identificacao da empresa, titulos de
+   * coluna, totalizadores de fechamento, assinatura). Nao sao linhas contabeis
+   * e nao indicam problema - ficam registradas so para que nenhuma linha do PDF
+   * seja descartada sem rastro.
+   */
+  structuralLines?: UnclassifiedLine[];
   invertedRows: InvertedBalanceRow[];
   zeroMovementRows: LedgerLine[];
   comparisonReport: BalanceComparisonReport;

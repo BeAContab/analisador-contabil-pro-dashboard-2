@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { TextItem, dedupeLedgerRows, extractMetadata, groupItemsIntoLines, mergeContinuationLines, parseLedgerLine } from './parser';
+import {
+  TextItem,
+  dedupeLedgerRows,
+  extractLedgerLines,
+  extractMetadata,
+  groupItemsIntoLines,
+  mergeContinuationLines,
+  parseLedgerLine
+} from './parser';
 import { LedgerLine } from '../types';
 
 function item(text: string, x: number, width: number, y = 700, page = 1): TextItem {
@@ -36,26 +44,32 @@ describe('groupItemsIntoLines', () => {
 });
 
 describe('mergeContinuationLines', () => {
-  it('merges a wrapped name into the previous account line when it lacks four money values', () => {
-    const { merged, orphanFragments } = mergeContinuationLines([
-      { page: 1, text: '1.1.01 Caixa Geral 1.000,00 500,00 200,00 1.300,00' },
-      { page: 1, text: 'continuacao do nome' }
+  it('absorbs a wrapped name into the previous account line when it still lacks four money values', () => {
+    const merged = mergeContinuationLines([
+      { page: 1, text: '1.1.01 Caixa Geral 1.000,00' },
+      { page: 1, text: 'continuacao do nome 500,00 200,00 1.300,00' }
     ]);
-    // Ja tem 4 valores monetarios -> a segunda linha nao deveria ser fundida
-    // silenciosamente sem verificacao; comportamento documentado abaixo.
-    expect(merged.length + orphanFragments.length).toBeGreaterThan(0);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]!.text).toBe('1.1.01 Caixa Geral 1.000,00 continuacao do nome 500,00 200,00 1.300,00');
   });
 
-  // Fase 2, item 2.7: fragmento sem numero de conta apos uma linha ja completa
-  // (4 valores) e preservado para revisao em vez de ser descartado sem rastro.
-  it('preserves an orphan fragment after a complete account line instead of dropping it', () => {
-    const { merged, orphanFragments } = mergeContinuationLines([
+  it('does not absorb anything into an account line that is already complete', () => {
+    const merged = mergeContinuationLines([
       { page: 1, text: '1.1.01 Caixa Geral 1.000,00 500,00 200,00 1.300,00' },
       { page: 1, text: 'texto residual sem numeros' }
     ]);
-    expect(merged).toHaveLength(1);
-    expect(orphanFragments).toHaveLength(1);
-    expect(orphanFragments[0]!.text).toBe('texto residual sem numeros');
+    expect(merged).toHaveLength(2);
+    expect(merged[1]!.text).toBe('texto residual sem numeros');
+  });
+
+  // Colar um cabecalho de pagina no nome de uma conta corromperia o registro.
+  it('never absorbs a structural line into an incomplete account line', () => {
+    const merged = mergeContinuationLines([
+      { page: 1, text: '1.1.01 Caixa Geral 1.000,00' },
+      { page: 2, text: 'Conta Contábil Cod. R. Nome da Conta S. Anterior Débito Crédito S. Atual' }
+    ]);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]!.text).toBe('1.1.01 Caixa Geral 1.000,00');
   });
 });
 
@@ -116,6 +130,67 @@ describe('dedupeLedgerRows', () => {
     expect(rows).toHaveLength(2);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('1.1.01');
+  });
+});
+
+// Item 4: antes, toda linha sem codigo de conta era descartada em silencio ou
+// rotulada como "possivel continuacao de nome perdida". Como o cabecalho se
+// repete a cada pagina, isso inflava `unclassified` com falsos positivos (1002
+// nos balancetes de exemplo) e fazia parecer que linhas contabeis sumiam.
+describe('extractLedgerLines (classificação de linhas)', () => {
+  const cabecalho = (folha: number, page: number) => [
+    { page, text: `(71 - 1) EMPRESA EXEMPLO LTDA NRC:` },
+    { page, text: 'CNPJ:04.342.454/0001-00 Inscrição Estadual:063140420' },
+    { page, text: 'Endereço:R TIBURCIO CAVALCANTE Número:790 Bairro:ALDEOTA' },
+    { page, text: 'B A L A N C E T E A N A L Í T I C O' },
+    { page, text: `Referência: 01/JAN/2025 até 31/DEZ/2025 Folha: ${folha}` },
+    { page, text: 'Conta Contábil Cod. R. Nome da Conta S. Anterior Débito Crédito S. Atual' }
+  ];
+
+  it('classifica cabeçalho repetido como estrutural, não como não-classificado', () => {
+    const lines = [
+      ...cabecalho(1, 1),
+      { page: 1, text: '1.1.01 Caixa Geral 1.000,00 500,00 200,00 1.300,00' },
+      ...cabecalho(2, 2),
+      { page: 2, text: '1.1.02 Clientes 2.000,00 0,00 0,00 2.000,00' }
+    ];
+
+    const { rows, unclassified, structural } = extractLedgerLines(lines);
+
+    expect(rows).toHaveLength(2);
+    expect(unclassified).toHaveLength(0);
+    expect(structural).toHaveLength(12);
+  });
+
+  it('não perde nenhuma linha: rows + unclassified + structural = total de entrada', () => {
+    const lines = [
+      ...cabecalho(1, 1),
+      { page: 1, text: '1.1.01 Caixa Geral 1.000,00 500,00 200,00 1.300,00' },
+      { page: 1, text: 'R E S U L T A D O 0,00C' },
+      { page: 1, text: 'texto totalmente inesperado' }
+    ];
+
+    const { rows, unclassified, structural } = extractLedgerLines(lines);
+
+    expect(rows.length + unclassified.length + structural.length).toBe(lines.length);
+  });
+
+  it('mantém em unclassified o que não é linha contábil nem estrutura conhecida', () => {
+    const { unclassified } = extractLedgerLines([
+      { page: 1, text: '1.1.01 Caixa Geral 1.000,00 500,00 200,00 1.300,00' },
+      { page: 1, text: 'texto totalmente inesperado' }
+    ]);
+
+    expect(unclassified).toHaveLength(1);
+    expect(unclassified[0]!.text).toBe('texto totalmente inesperado');
+  });
+
+  it('sinaliza linha que começa com conta mas não tem os quatro valores', () => {
+    const { rows, unclassified } = extractLedgerLines([{ page: 1, text: '1.1.01 Caixa Geral 1.000,00' }]);
+
+    expect(rows).toHaveLength(0);
+    expect(unclassified).toHaveLength(1);
+    expect(unclassified[0]!.reason).toContain('quatro valores');
   });
 });
 

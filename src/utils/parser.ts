@@ -42,43 +42,56 @@ const moneyBoundaryRegex = /([A-Za-zÀ-ÿ])(\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?
 const standaloneMoneyRegex = /^\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?$/i;
 const defaultNatureAccounts = ['1.2.05.007', '2.4.13.004'];
 
+/**
+ * Extrai o texto do PDF e agrupa em linhas logicas.
+ *
+ * Separado de `parsePdfFile` para que a etapa de extracao possa ser inspecionada
+ * isoladamente - e o unico jeito de medir quantas linhas brutas o pdf.js
+ * produziu versus quantas o parser conseguiu classificar.
+ */
+export async function extractPageLines(file: File): Promise<PageLine[]> {
+  const buffer = await file.arrayBuffer();
+  const document = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pageLines: PageLine[] = [];
+
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const items = content.items
+      .filter((item) => typeof item === 'object' && item !== null && 'str' in item && 'transform' in item)
+      .map((item) => {
+        // pdf.js tipa `transform` como number[] solto; sabemos pela propria
+        // especificacao de content stream do PDF que e sempre um vetor afim
+        // de 6 posicoes, entao a tupla fixa em PdfTextItem e mais precisa que
+        // o tipo de origem - precisa passar por `unknown` para essa correcao.
+        const textItem = item as unknown as PdfTextItem;
+        return {
+          text: textItem.str,
+          x: textItem.transform[4],
+          y: textItem.transform[5],
+          width: textItem.width ?? Math.max(textItem.str.length * 4, 8),
+          page: pageNumber
+        };
+      })
+      .filter((item) => item.text.trim().length > 0);
+
+    pageLines.push(...groupItemsIntoLines(items));
+
+    // Devolve a thread ao navegador entre paginas para que a barra de
+    // progresso continue pintando em PDFs grandes.
+    if (pageNumber < document.numPages) {
+      await yieldToBrowser();
+    }
+  }
+
+  return pageLines;
+}
+
 export async function parsePdfFile(file: File): Promise<CompanyReport> {
   const errors: string[] = [];
 
   try {
-    const buffer = await file.arrayBuffer();
-    const document = await pdfjsLib.getDocument({ data: buffer }).promise;
-    const pageLines: PageLine[] = [];
-
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const items = content.items
-        .filter((item) => typeof item === 'object' && item !== null && 'str' in item && 'transform' in item)
-        .map((item) => {
-          // pdf.js tipa `transform` como number[] solto; sabemos pela propria
-          // especificacao de content stream do PDF que e sempre um vetor afim
-          // de 6 posicoes, entao a tupla fixa em PdfTextItem e mais precisa que
-          // o tipo de origem - precisa passar por `unknown` para essa correcao.
-          const textItem = item as unknown as PdfTextItem;
-          return {
-            text: textItem.str,
-            x: textItem.transform[4],
-            y: textItem.transform[5],
-            width: textItem.width ?? Math.max(textItem.str.length * 4, 8),
-            page: pageNumber
-          };
-        })
-        .filter((item) => item.text.trim().length > 0);
-
-      pageLines.push(...groupItemsIntoLines(items));
-
-      // Devolve a thread ao navegador entre paginas para que a barra de
-      // progresso continue pintando em PDFs grandes.
-      if (pageNumber < document.numPages) {
-        await yieldToBrowser();
-      }
-    }
+    const pageLines = await extractPageLines(file);
 
     const allText = pageLines.map((line) => line.text).join('\n');
     const meta = extractMetadata(allText, file.name);
@@ -131,6 +144,7 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       period: meta.period,
       rows,
       unclassified: parsed.unclassified,
+      structuralLines: parsed.structural,
       invertedRows,
       zeroMovementRows,
       comparisonReport,
@@ -154,6 +168,7 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       period: 'Período não identificado',
       rows: [],
       unclassified: [],
+      structuralLines: [],
       invertedRows: [],
       zeroMovementRows: [],
       comparisonReport: buildComparisonReport([]),
@@ -268,37 +283,123 @@ export function extractMetadata(text: string, fileName: string) {
   return { companyCode, companyName, cnpj, period };
 }
 
-function extractLedgerLines(lines: PageLine[]) {
-  const rows: LedgerLine[] = [];
-  const unclassified: UnclassifiedLine[] = [];
-  const { merged, orphanFragments } = mergeContinuationLines(lines);
+/**
+ * Blocos fixos do layout do balancete que nao sao linhas contabeis.
+ *
+ * Todos ancoram em palavra/pontuacao, nunca em digito inicial, entao nao ha
+ * risco de engolir uma linha contabil (que sempre comeca com codigo de conta).
+ */
+const structuralPatterns: Array<{ reason: string; test: RegExp }> = [
+  { reason: 'Cabeçalho: identificação da empresa.', test: /^\(\s*\d+\s*-\s*\d+\s*\)/ },
+  { reason: 'Cabeçalho: dados cadastrais da empresa.', test: /^(CNPJ|CPF|Endereço|Município|Municipio|Inscrição)\s*:/i },
+  { reason: 'Cabeçalho: período de referência.', test: /^Refer[êe]ncia\s*:/i },
+  { reason: 'Cabeçalho: títulos das colunas.', test: /^Conta\s+Cont[áa]bil\b/i },
+  {
+    reason: 'Rodapé: totalizador de fechamento.',
+    test: /^(ATIVO|PASSIVO|RESULTADO\s+DO\s+PER[ÍI]ODO|RESULTADO\s+E\s+REGULARIZA[ÇC][ÃA]O)\b/i
+  },
+  // Titulos deste relatorio usam letras espacadas ("B A L A N C E T E",
+  // "R E S U L T A D O", "R E S U M O", "P R E J U I Z O"). Cobrir o padrao
+  // tipografico e mais robusto que listar cada titulo possivel.
+  { reason: 'Título/seção do relatório.', test: /^(?:[A-ZÀ-Ÿ]\s+){2,}[A-ZÀ-Ÿ]\b/ },
+  { reason: 'Rodapé: local e data de emissão.', test: /^[A-Za-zÀ-ÿ\s]+-\s*[A-Z]{2}\s*,\s*\d{1,2}\s+\S+\s+de\s+\d{4}/i },
+  { reason: 'Rodapé: assinatura/responsável.', test: /^(Contador\(a\)|CRC|DIRETOR)/i }
+];
 
-  merged.forEach((line) => {
-    if (!accountRegex.test(line.text)) return;
-
-    const row = parseLedgerLine(line.text, line.page);
-    if (row) {
-      rows.push(row);
-    } else {
-      unclassified.push({
-        page: line.page,
-        text: line.text,
-        reason: 'Linha começa com conta contábil, mas não possui quatro valores monetários identificáveis.'
-      });
-    }
-  });
-
-  // Fragmentos que vinham logo apos uma linha de conta e nao foram absorvidos
-  // eram descartados em silencio. Preserva-los respeita o principio de nunca
-  // sumir com texto que o parser nao conseguiu interpretar.
-  unclassified.push(...orphanFragments);
-
-  return { rows, unclassified };
+/** Remove digitos para que "Folha: 1" e "Folha: 2" tenham a mesma forma. */
+function lineShape(text: string): string {
+  return text.replace(/\d+/g, '#');
 }
 
-export function mergeContinuationLines(lines: PageLine[]): { merged: PageLine[]; orphanFragments: UnclassifiedLine[] } {
+/**
+ * Cabecalho/rodape de pagina se repete a cada folha do PDF. Detectar essa
+ * repeticao e independente de layout, entao cobre variacoes de ERP que os
+ * padroes fixos acima nao preveem. So considera linhas SEM codigo de conta,
+ * portanto nunca descarta dado contabil.
+ */
+function findRepeatedPageFurniture(lines: PageLine[]): Set<string> {
+  const pagesByShape = new Map<string, Set<number>>();
+
+  lines.forEach((line) => {
+    if (accountRegex.test(line.text)) return;
+    const shape = lineShape(line.text);
+    const pages = pagesByShape.get(shape) ?? new Set<number>();
+    pages.add(line.page);
+    pagesByShape.set(shape, pages);
+  });
+
+  const repeated = new Set<string>();
+  pagesByShape.forEach((pages, shape) => {
+    if (pages.size >= 2) repeated.add(shape);
+  });
+  return repeated;
+}
+
+function structuralReason(text: string, repeatedShapes: Set<string>): string | null {
+  const match = structuralPatterns.find((pattern) => pattern.test.test(text));
+  if (match) return match.reason;
+  if (repeatedShapes.has(lineShape(text))) return 'Cabeçalho/rodapé repetido em várias páginas.';
+  return null;
+}
+
+/**
+ * Distribui cada linha em exatamente um destino: `rows` (linha contabil),
+ * `structural` (cabecalho/rodape reconhecido) ou `unclassified` (o parser
+ * genuinamente nao entendeu).
+ *
+ * Antes, toda linha sem codigo de conta era descartada em silencio no
+ * `extractLedgerLines` OU rotulada como "possivel continuacao de nome perdida".
+ * Como o cabecalho se repete a cada pagina, isso inflava `unclassified` com
+ * centenas de falsos positivos (1002 nos balancetes de exemplo, contra ~0 de
+ * perda real), fazendo parecer que linhas contabeis estavam sumindo.
+ */
+export function extractLedgerLines(lines: PageLine[]) {
+  const rows: LedgerLine[] = [];
+  const unclassified: UnclassifiedLine[] = [];
+  const structural: UnclassifiedLine[] = [];
+
+  const repeatedShapes = findRepeatedPageFurniture(lines);
+  const merged = mergeContinuationLines(lines, repeatedShapes);
+
+  merged.forEach((line) => {
+    if (accountRegex.test(line.text)) {
+      const row = parseLedgerLine(line.text, line.page);
+      if (row) {
+        rows.push(row);
+      } else {
+        unclassified.push({
+          page: line.page,
+          text: line.text,
+          reason: 'Linha começa com conta contábil, mas não possui quatro valores monetários identificáveis.'
+        });
+      }
+      return;
+    }
+
+    const reason = structuralReason(line.text, repeatedShapes);
+    if (reason) {
+      structural.push({ page: line.page, text: line.text, reason });
+      return;
+    }
+
+    // Nada e descartado em silencio: o que sobra fica visivel para revisao.
+    unclassified.push({
+      page: line.page,
+      text: line.text,
+      reason: 'Trecho não reconhecido como linha contábil nem como cabeçalho/rodapé do relatório.'
+    });
+  });
+
+  return { rows, unclassified, structural };
+}
+
+/**
+ * Absorve continuacao de nome quebrada em duas linhas pelo PDF. Linhas
+ * estruturais nunca sao absorvidas - colar um cabecalho de pagina no nome de
+ * uma conta corromperia o registro.
+ */
+export function mergeContinuationLines(lines: PageLine[], repeatedShapes = new Set<string>()): PageLine[] {
   const merged: PageLine[] = [];
-  const orphanFragments: UnclassifiedLine[] = [];
 
   lines.forEach((line) => {
     const text = normalizeLine(line.text);
@@ -307,29 +408,23 @@ export function mergeContinuationLines(lines: PageLine[]): { merged: PageLine[];
     const startsAccount = accountRegex.test(text);
     const previous = merged[merged.length - 1];
     const previousIsAccount = Boolean(previous && accountRegex.test(previous.text));
+    const isStructural = structuralReason(text, repeatedShapes) !== null;
 
-    if (!startsAccount && previousIsAccount && previous && !hasFourMoneyValues(previous.text)) {
+    if (
+      !startsAccount &&
+      !isStructural &&
+      previousIsAccount &&
+      previous &&
+      !hasFourMoneyValues(previous.text)
+    ) {
       previous.text = normalizeLine(`${previous.text} ${text}`);
-      return;
-    }
-
-    // Fragmento logo depois de uma linha de conta ja completa: provavelmente e
-    // continuacao de nome que se perderia. Registra para revisao manual em vez
-    // de descartar.
-    if (!startsAccount && previousIsAccount && !hasMoneyValue(text)) {
-      orphanFragments.push({
-        page: line.page,
-        text,
-        reason:
-          'Trecho sem código de conta logo após uma linha contábil completa. Pode ser continuação de nome que não pôde ser anexada com segurança.'
-      });
       return;
     }
 
     merged.push({ page: line.page, text });
   });
 
-  return { merged, orphanFragments };
+  return merged;
 }
 
 /**
@@ -449,10 +544,6 @@ export function parseLedgerLine(rawLine: string, page: number): LedgerLine | nul
 
 function hasFourMoneyValues(text: string): boolean {
   return [...text.matchAll(moneyRegex)].length >= 4;
-}
-
-function hasMoneyValue(text: string): boolean {
-  return [...text.matchAll(moneyRegex)].length > 0;
 }
 
 function isDefaultNatureAccount(account: string): boolean {
