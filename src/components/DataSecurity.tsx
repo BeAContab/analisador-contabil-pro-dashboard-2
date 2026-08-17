@@ -23,7 +23,7 @@ export function DataSecurity() {
           </div>
           <h3 className="font-title-sm text-primary">Memória Volátil</h3>
           <p className="text-body-sm text-secondary leading-relaxed">
-            Os dados do balancete residem apenas na memória RAM enquanto a aplicação está aberta. Não gravamos informações em bancos de dados ou armazenamento persistente sem sua ação explícita (como baixar um PDF ou salvar a chave da API, que expira em 30 dias).
+            Os dados do balancete residem apenas na memória RAM enquanto a aplicação está aberta. Não gravamos informações em bancos de dados ou armazenamento persistente sem sua ação explícita (como baixar um PDF ou informar sua própria chave da API da TESS, que expira em 30 dias).
           </p>
         </article>
 
@@ -54,12 +54,15 @@ export function DataSecurity() {
           <h3 className="font-title-sm text-primary">Assistente de IA: a única exceção</h3>
         </div>
         <p className="text-body-sm text-secondary leading-relaxed">
-          O chat com IA é <strong>opcional e vem desligado</strong>. Ele só entra em operação depois que você informa sua
-          própria chave da API da TESS (com Workspace ID e Agent ID) e confirma o aviso de privacidade dentro do assistente.
+          O chat com IA é <strong>opcional e vem desligado</strong>. Ele só entra em operação depois que você confirma
+          o aviso de privacidade dentro do assistente — por padrão, a chamada passa pelo nosso servidor usando uma
+          chave própria da Barreira &amp; Associados, sem você precisar informar nada. Se preferir, pode informar sua
+          própria chave da API da TESS (com Workspace ID e Agent ID) no lugar da padrão.
         </p>
         <p className="text-body-sm text-secondary leading-relaxed">
           Quando ativado, o PDF continua sem sair do navegador, mas um resumo pseudonimizado da análise é enviado à
-          TESS: a razão social vira &quot;Empresa 1&quot; e CNPJ/CPF são removidos antes do envio. Códigos e nomes de
+          TESS (por padrão, através do nosso servidor, que só repassa a chamada e não armazena nada): a razão social
+          vira &quot;Empresa 1&quot; e CNPJ/CPF são removidos antes do envio. Códigos e nomes de
           contas, saldos, período e alertas <strong>são transmitidos</strong>, pois são necessários para a interpretação.
           A partir daí, o tratamento segue a política de privacidade da TESS.
         </p>

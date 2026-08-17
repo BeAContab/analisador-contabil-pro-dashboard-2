@@ -69,8 +69,10 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     () => (activeApiKey ? getTessApiKeyExpiration() : null),
     [activeApiKey]
   );
-  // A IA so e acionada quando existe chave, workspace, agente E o usuario autorizou o envio.
-  const isTessActive = Boolean(activeApiKey) && Boolean(activeWorkspaceId) && Boolean(activeAgentId) && consentGranted;
+  // A IA so precisa de consentimento: sem chave propria, usa o proxy do
+  // servidor com a chave padrao da Barreira (ver api/tess-chat.ts).
+  const isTessActive = consentGranted;
+  const hasOwnKey = Boolean(activeApiKey) && Boolean(activeWorkspaceId) && Boolean(activeAgentId);
   const totalOccurrences = useMemo(() => sumOccurrences(reports), [reports]);
 
   const handleClose = useCallback(() => setIsOpen(false), []);
@@ -145,11 +147,13 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     try {
       let assistantContent: string;
 
-      if (apiKey && workspaceId && agentId && consentGranted) {
+      if (consentGranted) {
+        // Sem chave/workspace/agente proprios, generateTessChatReply usa o
+        // proxy do servidor (chave padrao da Barreira) automaticamente.
         assistantContent = await generateTessChatReply({
-          apiKey,
-          workspaceId,
-          agentId,
+          apiKey: apiKey || undefined,
+          workspaceId: workspaceId || undefined,
+          agentId: agentId || undefined,
           reports,
           history: messages
             .filter((message) => message.role === 'assistant' || message.role === 'user')
@@ -208,13 +212,16 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   }
 
   function handleSaveApiKey() {
-    if (!apiKeyInput.trim() || !workspaceIdInput.trim() || !agentIdInput.trim()) {
-      setConfigError('Informe a chave, o Workspace ID e o Agent ID da TESS antes de salvar.');
+    // Chave/workspace/agente proprios sao opcionais (tudo ou nada): sem
+    // nenhum dos tres, a IA usa a chave padrao da Barreira via proxy.
+    const ownFieldsFilled = [apiKeyInput.trim(), workspaceIdInput.trim(), agentIdInput.trim()].filter(Boolean).length;
+    if (ownFieldsFilled > 0 && ownFieldsFilled < 3) {
+      setConfigError('Preencha os 3 campos para usar sua própria conta TESS, ou deixe todos em branco para usar a chave padrão.');
       return;
     }
 
     // Sem autorizacao explicita nada e enviado: o consentimento e pre-requisito
-    // para gravar a configuracao e ativar a IA.
+    // para ativar a IA, com chave propria ou com a padrao.
     if (!consentGranted) {
       setConfigError('Confirme o aviso de privacidade para autorizar o envio de dados a TESS.');
       return;
@@ -321,9 +328,11 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                   O que sai do seu navegador
                 </p>
                 <p className="text-xs text-foreground leading-relaxed">
-                  A leitura do PDF continua 100% local. Ao ativar a IA, um <strong>resumo pseudonimizado</strong> da
-                  análise é enviado à TESS: razão social vira &quot;Empresa 1&quot;, CNPJ e CPF são removidos,
-                  mas códigos, nomes de contas, saldos e alertas são enviados.
+                  A leitura do PDF continua 100% local. Ao autorizar abaixo, um <strong>resumo pseudonimizado</strong>{' '}
+                  da análise é enviado por padrão através do nosso servidor (com uma chave própria da Barreira &amp;
+                  Associados, sem custo pra você) até a TESS: razão social vira &quot;Empresa 1&quot;, CNPJ e CPF são
+                  removidos, mas códigos, nomes de contas, saldos e alertas são enviados. Nosso servidor só repassa a
+                  chamada, não guarda nada.
                 </p>
                 <label className="flex items-start gap-2 cursor-pointer pt-1">
                   <input
@@ -339,6 +348,9 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                 </label>
               </div>
 
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground pt-1">
+                Opcional: usar minha própria conta TESS
+              </p>
               <label htmlFor="tess-api-key" className="block text-xs text-muted-foreground font-medium leading-relaxed">
                 Chave da API da TESS
               </label>
@@ -381,8 +393,9 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                 className="w-full rounded-xl border border-surface-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition-all"
               />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                A chave fica salva sem criptografia neste navegador e expira automaticamente em{' '}
-                {TESS_API_KEY_TTL_DAYS} dias.
+                Deixe os 3 campos em branco para usar a chave padrão da Barreira &amp; Associados. Se preferir usar a
+                própria conta TESS, preencha os três: a chave fica salva sem criptografia neste navegador e expira
+                automaticamente em {TESS_API_KEY_TTL_DAYS} dias.
                 {keyExpiration ? ` Validade atual: ${keyExpiration.toLocaleDateString('pt-BR')}.` : ''} Workspace ID e
                 Agent ID não são segredo, mas também ficam salvos neste navegador. Use uma chave própria com cota
                 limitada e revogue-a se o dispositivo for compartilhado.
@@ -408,11 +421,11 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                     onClick={handleClearApiKey}
                     className="rounded-lg border border-surface-border bg-surface px-4 py-2 text-xs font-bold text-foreground hover:bg-muted transition-colors"
                   >
-                    Limpar
+                    Usar chave padrão
                   </button>
                 </div>
                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${isTessActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                  {isTessActive ? 'TESS ativa' : 'Modo local'}
+                  {isTessActive ? (hasOwnKey ? 'TESS ativa (chave própria)' : 'TESS ativa (padrão)') : 'Modo local'}
                 </span>
               </div>
             </div>

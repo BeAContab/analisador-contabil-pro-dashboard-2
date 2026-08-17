@@ -156,26 +156,33 @@ export function setTessConsent(granted: boolean) {
   window.localStorage.removeItem(TESS_CONSENT_STORAGE_KEY);
 }
 
-/** Verdadeiro apenas quando ha chave, workspace, agente e consentimento registrados. */
+/**
+ * Verdadeiro apenas com consentimento explicito. Chave/workspace/agente
+ * proprios sao opcionais: na ausencia deles, generateTessChatReply usa o
+ * proxy do servidor (api/tess-chat.ts) com a chave padrao da Barreira.
+ */
 export function isTessEnabled(): boolean {
-  return (
-    Boolean(getStoredTessApiKey()) &&
-    Boolean(getStoredTessWorkspaceId()) &&
-    Boolean(getStoredTessAgentId()) &&
-    hasTessConsent()
-  );
+  return hasTessConsent();
+}
+
+/** Verdadeiro quando a pessoa configurou a propria conta TESS em vez da chave padrao. */
+export function hasOwnTessCredentials(): boolean {
+  return Boolean(getStoredTessApiKey()) && Boolean(getStoredTessWorkspaceId()) && Boolean(getStoredTessAgentId());
 }
 
 export async function generateTessChatReply(params: {
-  apiKey: string;
-  workspaceId: string;
-  agentId: string;
+  apiKey?: string | undefined;
+  workspaceId?: string | undefined;
+  agentId?: string | undefined;
   reports: CompanyReport[];
   history: ChatTurn[];
   userMessage: string;
   signal?: AbortSignal | undefined;
 }): Promise<string> {
   const { apiKey, workspaceId, agentId, reports, history, userMessage, signal } = params;
+  // Com chave/workspace/agente proprios, fala direto com a TESS; senao, usa o
+  // proxy do servidor (chave padrao da Barreira, nunca exposta ao navegador).
+  const useOwnCredentials = Boolean(apiKey && workspaceId && agentId);
 
   // Tudo que sai daqui passa pela pseudonimizacao; a resposta e revertida no fim.
   const aliases = buildCompanyAliases(reports);
@@ -185,33 +192,22 @@ export async function generateTessChatReply(params: {
     text: anonymizeText(turn.text, aliases)
   }));
 
-  const initial = await requestTess({
-    apiKey,
-    workspaceId,
-    agentId,
-    history: safeHistory,
-    userMessage: prompt,
-    signal
-  });
+  const doRequest = (history: ChatTurn[], userMessage: string) =>
+    useOwnCredentials
+      ? requestTess({ apiKey: apiKey!, workspaceId: workspaceId!, agentId: agentId!, history, userMessage, signal })
+      : requestTessViaProxy({ history, userMessage, signal });
+
+  const initial = await doRequest(safeHistory, prompt);
 
   let finalText = initial.text;
 
   // A TESS pode cortar a resposta por limite de tokens ou terminar no meio de
   // uma frase. Nesse caso, pedimos continuacao antes de exibir a resposta.
   if (shouldContinueTessReply(initial)) {
-    const continuation = await requestTess({
-      apiKey,
-      workspaceId,
-      agentId,
-      history: [
-        ...safeHistory,
-        { role: 'user', text: prompt },
-        { role: 'model', text: initial.text }
-      ],
-      userMessage:
-        'Continue exatamente de onde voce parou na ultima resposta. Nao reinicie a explicacao e nao repita o texto ja enviado.',
-      signal
-    });
+    const continuation = await doRequest(
+      [...safeHistory, { role: 'user', text: prompt }, { role: 'model', text: initial.text }],
+      'Continue exatamente de onde voce parou na ultima resposta. Nao reinicie a explicacao e nao repita o texto ja enviado.'
+    );
 
     finalText = mergeTessResponses(initial.text, continuation.text);
   }
@@ -221,23 +217,23 @@ export async function generateTessChatReply(params: {
 
 export function buildTessBootstrapReply(reports: CompanyReport[]): string {
   if (reports.length === 0) {
-    return 'Chave TESS configurada. Assim que voce processar um balancete, eu passo a responder com leitura mais senior, priorizacao de riscos, limitacoes explicitadas e proximos passos de conferencia.';
+    return 'IA da TESS ativada. Assim que voce processar um balancete, eu passo a responder com leitura mais senior, priorizacao de riscos, limitacoes explicitadas e proximos passos de conferencia.';
   }
 
-  return `Chave TESS configurada. Ja tenho contexto de ${reports.length} empresa(s) processada(s) e posso interpretar os alertas com uma resposta mais senior, priorizada por risco e com base tecnica mais consistente.`;
+  return `IA da TESS ativada. Ja tenho contexto de ${reports.length} empresa(s) processada(s) e posso interpretar os alertas com uma resposta mais senior, priorizada por risco e com base tecnica mais consistente.`;
 }
 
 export function buildLocalFallbackNotice(errorMessage?: string): string {
   if (!errorMessage) {
-    return 'TESS ainda nao esta configurada. Posso continuar no modo local, mas a leitura fica menos profunda e com menor capacidade de priorizacao tecnica ate voce informar a chave da API.';
+    return 'O assistente de IA ainda nao foi autorizado. Posso continuar no modo local, mas a leitura fica menos profunda e com menor capacidade de priorizacao tecnica ate voce confirmar o aviso de privacidade nas configuracoes.';
   }
 
   return `Nao consegui usar a TESS agora. Motivo: ${errorMessage} Posso continuar no modo local enquanto isso, mantendo respostas mais cautelosas e resumidas.`;
 }
 
-/** Aviso exibido quando existe configuracao, mas o usuario ainda nao autorizou o envio. */
+/** Aviso exibido quando ha chave/workspace/agente proprios salvos, mas o consentimento ainda nao foi dado. */
 export function buildConsentPendingNotice(): string {
-  return 'Sua configuracao esta salva, mas o envio de dados para a TESS ainda nao foi autorizado. Abra as configuracoes do assistente e confirme o aviso de privacidade para ativar a IA. Ate la, sigo no modo local.';
+  return 'Sua chave propria esta salva, mas o envio de dados para a TESS ainda nao foi autorizado. Abra as configuracoes do assistente e confirme o aviso de privacidade para ativar a IA. Ate la, sigo no modo local.';
 }
 
 function buildTessMessages(history: ChatTurn[], userMessage: string) {
@@ -404,6 +400,31 @@ async function requestTess(params: {
     })
   });
 
+  return parseTessResponse(response);
+}
+
+/**
+ * Caminho padrao (sem chave propria): passa pelo proxy do servidor
+ * (api/tess-chat.ts), que guarda a chave da Barreira do lado do servidor.
+ * Mesmo formato de request/response do requestTess - so a autenticacao muda.
+ */
+async function requestTessViaProxy(params: {
+  history: ChatTurn[];
+  userMessage: string;
+  signal?: AbortSignal | undefined;
+}): Promise<{ text: string; finishReason?: string | undefined }> {
+  const { history, userMessage, signal } = params;
+  const response = await fetch('/api/tess-chat', {
+    method: 'POST',
+    signal: signal ?? null,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: buildTessMessages(history, userMessage) })
+  });
+
+  return parseTessResponse(response);
+}
+
+async function parseTessResponse(response: Response): Promise<{ text: string; finishReason?: string | undefined }> {
   if (!response.ok) {
     const errorText = await safeReadText(response);
     throw new Error(errorText || `TESS retornou erro HTTP ${response.status}.`);
