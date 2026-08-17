@@ -77,7 +77,7 @@ export function LocalProcessingDoc() {
             <h4 className="font-label-caps text-secondary mb-sm uppercase">Assistente de IA</h4>
             <p className="text-body-sm leading-relaxed mb-md">
               O chat com IA é opcional e desativado por padrão. Se você o ativar, um resumo pseudonimizado da análise
-              (sem CNPJ e com a razão social substituída) é enviado à API do Google. O PDF em si nunca é transmitido.
+              (sem CNPJ e com a razão social substituída) é enviado à API da TESS. O PDF em si nunca é transmitido.
             </p>
           </div>
           <div className="bg-surface-container-lowest border border-outline-variant p-lg rounded-xl">

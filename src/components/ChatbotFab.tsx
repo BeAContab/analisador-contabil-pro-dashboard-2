@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { CompanyReport } from '../types';
+import { renderChatMarkdown } from '../utils/chatMarkdownView';
 import {
   buildChatFooterNote,
   buildChatSuggestions,
@@ -8,17 +9,21 @@ import {
   generateChatbotResponse
 } from '../utils/chatbot';
 import {
-  GEMINI_API_KEY_TTL_DAYS,
+  TESS_API_KEY_TTL_DAYS,
   buildConsentPendingNotice,
-  buildGeminiBootstrapReply,
+  buildTessBootstrapReply,
   buildLocalFallbackNotice,
-  generateGeminiChatReply,
-  getGeminiApiKeyExpiration,
-  getStoredGeminiApiKey,
-  hasGeminiConsent,
-  setGeminiConsent,
-  storeGeminiApiKey
-} from '../utils/gemini';
+  generateTessChatReply,
+  getTessApiKeyExpiration,
+  getStoredTessApiKey,
+  getStoredTessWorkspaceId,
+  getStoredTessAgentId,
+  hasTessConsent,
+  setTessConsent,
+  storeTessApiKey,
+  storeTessWorkspaceId,
+  storeTessAgentId
+} from '../utils/tess';
 import { sumOccurrences } from '../utils/occurrences';
 
 interface ChatbotFabProps {
@@ -35,7 +40,9 @@ interface ChatMessage {
 export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [apiKeyInput, setApiKeyInput] = useState(() => getStoredGeminiApiKey());
+  const [apiKeyInput, setApiKeyInput] = useState(() => getStoredTessApiKey());
+  const [workspaceIdInput, setWorkspaceIdInput] = useState(() => getStoredTessWorkspaceId());
+  const [agentIdInput, setAgentIdInput] = useState(() => getStoredTessAgentId());
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isLoadingReply, setIsLoadingReply] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -46,8 +53,10 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     }
   ]);
   const [hasInjectedReportUpdate, setHasInjectedReportUpdate] = useState(reports.length > 0);
-  const [activeApiKey, setActiveApiKey] = useState(() => getStoredGeminiApiKey());
-  const [consentGranted, setConsentGranted] = useState(() => hasGeminiConsent());
+  const [activeApiKey, setActiveApiKey] = useState(() => getStoredTessApiKey());
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => getStoredTessWorkspaceId());
+  const [activeAgentId, setActiveAgentId] = useState(() => getStoredTessAgentId());
+  const [consentGranted, setConsentGranted] = useState(() => hasTessConsent());
   const [configError, setConfigError] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Cancela a requisicao em voo quando o componente desmonta ou quando uma nova
@@ -57,11 +66,11 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   const suggestions = useMemo(() => buildChatSuggestions(reports), [reports]);
   const footerNote = useMemo(() => buildChatFooterNote(reports), [reports]);
   const keyExpiration = useMemo(
-    () => (activeApiKey ? getGeminiApiKeyExpiration() : null),
+    () => (activeApiKey ? getTessApiKeyExpiration() : null),
     [activeApiKey]
   );
-  // A IA so e acionada quando existe chave E o usuario autorizou o envio.
-  const isGeminiActive = Boolean(activeApiKey) && consentGranted;
+  // A IA so e acionada quando existe chave, workspace, agente E o usuario autorizou o envio.
+  const isTessActive = Boolean(activeApiKey) && Boolean(activeWorkspaceId) && Boolean(activeAgentId) && consentGranted;
   const totalOccurrences = useMemo(() => sumOccurrences(reports), [reports]);
 
   const handleClose = useCallback(() => setIsOpen(false), []);
@@ -128,15 +137,19 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
     const requestId = ++requestIdRef.current;
     const isStale = () => requestId !== requestIdRef.current;
 
-    const apiKey = getStoredGeminiApiKey();
+    const apiKey = getStoredTessApiKey();
+    const workspaceId = getStoredTessWorkspaceId();
+    const agentId = getStoredTessAgentId();
     const localReply = () => generateChatbotResponse(trimmed, reports);
 
     try {
       let assistantContent: string;
 
-      if (apiKey && consentGranted) {
-        assistantContent = await generateGeminiChatReply({
+      if (apiKey && workspaceId && agentId && consentGranted) {
+        assistantContent = await generateTessChatReply({
           apiKey,
+          workspaceId,
+          agentId,
           reports,
           history: messages
             .filter((message) => message.role === 'assistant' || message.role === 'user')
@@ -147,7 +160,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
           userMessage: trimmed,
           signal: controller.signal
         });
-      } else if (apiKey) {
+      } else if (apiKey && workspaceId && agentId) {
         assistantContent = `${buildConsentPendingNotice()} ${localReply()}`;
       } else {
         assistantContent = `${buildLocalFallbackNotice()} ${localReply()}`;
@@ -170,7 +183,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
       }
       if (isStale()) return;
 
-      const errorMessage = error instanceof Error ? sanitizeGeminiError(error.message) : 'Falha desconhecida ao consultar o Gemini.';
+      const errorMessage = error instanceof Error ? sanitizeTessError(error.message, apiKey) : 'Falha desconhecida ao consultar a TESS.';
       setMessages((current) => [
         ...current,
         {
@@ -195,43 +208,57 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   }
 
   function handleSaveApiKey() {
-    if (!apiKeyInput.trim()) {
-      setConfigError('Informe uma chave do Gemini antes de salvar.');
+    if (!apiKeyInput.trim() || !workspaceIdInput.trim() || !agentIdInput.trim()) {
+      setConfigError('Informe a chave, o Workspace ID e o Agent ID da TESS antes de salvar.');
       return;
     }
 
     // Sem autorizacao explicita nada e enviado: o consentimento e pre-requisito
-    // para gravar a chave e ativar a IA.
+    // para gravar a configuracao e ativar a IA.
     if (!consentGranted) {
-      setConfigError('Confirme o aviso de privacidade para autorizar o envio de dados ao Gemini.');
+      setConfigError('Confirme o aviso de privacidade para autorizar o envio de dados a TESS.');
       return;
     }
 
     setConfigError('');
-    storeGeminiApiKey(apiKeyInput);
-    const storedKey = getStoredGeminiApiKey();
+    storeTessApiKey(apiKeyInput);
+    storeTessWorkspaceId(workspaceIdInput);
+    storeTessAgentId(agentIdInput);
+    const storedKey = getStoredTessApiKey();
+    const storedWorkspaceId = getStoredTessWorkspaceId();
+    const storedAgentId = getStoredTessAgentId();
     setApiKeyInput(storedKey);
+    setWorkspaceIdInput(storedWorkspaceId);
+    setAgentIdInput(storedAgentId);
     setActiveApiKey(storedKey);
+    setActiveWorkspaceId(storedWorkspaceId);
+    setActiveAgentId(storedAgentId);
     setMessages((current) => [
       ...current,
       {
         id: `assistant-bootstrap-${Date.now()}`,
         role: 'assistant',
-        content: buildGeminiBootstrapReply(reports)
+        content: buildTessBootstrapReply(reports)
       }
     ]);
     setIsConfigOpen(false);
   }
 
   function handleClearApiKey() {
-    storeGeminiApiKey('');
+    storeTessApiKey('');
+    storeTessWorkspaceId('');
+    storeTessAgentId('');
     setApiKeyInput('');
+    setWorkspaceIdInput('');
+    setAgentIdInput('');
     setActiveApiKey('');
+    setActiveWorkspaceId('');
+    setActiveAgentId('');
     setConfigError('');
   }
 
   function handleToggleConsent(granted: boolean) {
-    setGeminiConsent(granted);
+    setTessConsent(granted);
     setConsentGranted(granted);
     if (granted) setConfigError('');
   }
@@ -269,7 +296,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                 type="button"
                 onClick={() => setIsConfigOpen((current) => !current)}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 transition-colors hover:bg-white/20"
-                title="Configurar Gemini"
+                title="Configurar TESS"
               >
                 <span className="material-symbols-outlined text-[18px]">settings</span>
               </button>
@@ -295,7 +322,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                 </p>
                 <p className="text-xs text-foreground leading-relaxed">
                   A leitura do PDF continua 100% local. Ao ativar a IA, um <strong>resumo pseudonimizado</strong> da
-                  análise é enviado ao Google (Gemini): razão social vira &quot;Empresa 1&quot;, CNPJ e CPF são removidos,
+                  análise é enviado à TESS: razão social vira &quot;Empresa 1&quot;, CNPJ e CPF são removidos,
                   mas códigos, nomes de contas, saldos e alertas são enviados.
                 </p>
                 <label className="flex items-start gap-2 cursor-pointer pt-1">
@@ -306,30 +333,59 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                     className="mt-0.5 h-4 w-4 flex-shrink-0 accent-primary"
                   />
                   <span className="text-xs text-foreground leading-relaxed font-medium">
-                    Autorizo o envio desse resumo para o Gemini e entendo que o tratamento passa a seguir a
-                    política de privacidade do Google.
+                    Autorizo o envio desse resumo para a TESS e entendo que o tratamento passa a seguir a
+                    política de privacidade da TESS.
                   </span>
                 </label>
               </div>
 
-              <label htmlFor="gemini-api-key" className="block text-xs text-muted-foreground font-medium leading-relaxed">
-                Chave da API do Gemini
+              <label htmlFor="tess-api-key" className="block text-xs text-muted-foreground font-medium leading-relaxed">
+                Chave da API da TESS
               </label>
               <input
-                id="gemini-api-key"
-                name="gemini-api-key"
+                id="tess-api-key"
+                name="tess-api-key"
                 type="password"
                 autoComplete="off"
                 value={apiKeyInput}
                 onChange={(event) => setApiKeyInput(event.target.value)}
-                placeholder="AIza..."
+                placeholder="Tokens de API, no painel da TESS"
+                className="w-full rounded-xl border border-surface-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition-all"
+              />
+
+              <label htmlFor="tess-workspace-id" className="block text-xs text-muted-foreground font-medium leading-relaxed">
+                Workspace ID
+              </label>
+              <input
+                id="tess-workspace-id"
+                name="tess-workspace-id"
+                type="text"
+                autoComplete="off"
+                value={workspaceIdInput}
+                onChange={(event) => setWorkspaceIdInput(event.target.value)}
+                placeholder="Configurações → Workspace, no painel da TESS"
+                className="w-full rounded-xl border border-surface-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition-all"
+              />
+
+              <label htmlFor="tess-agent-id" className="block text-xs text-muted-foreground font-medium leading-relaxed">
+                Agent ID
+              </label>
+              <input
+                id="tess-agent-id"
+                name="tess-agent-id"
+                type="text"
+                autoComplete="off"
+                value={agentIdInput}
+                onChange={(event) => setAgentIdInput(event.target.value)}
+                placeholder="ID do Agent criado no Agent Studio"
                 className="w-full rounded-xl border border-surface-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition-all"
               />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 A chave fica salva sem criptografia neste navegador e expira automaticamente em{' '}
-                {GEMINI_API_KEY_TTL_DAYS} dias.
-                {keyExpiration ? ` Validade atual: ${keyExpiration.toLocaleDateString('pt-BR')}.` : ''} Use uma chave
-                própria com cota limitada e revogue-a se o dispositivo for compartilhado.
+                {TESS_API_KEY_TTL_DAYS} dias.
+                {keyExpiration ? ` Validade atual: ${keyExpiration.toLocaleDateString('pt-BR')}.` : ''} Workspace ID e
+                Agent ID não são segredo, mas também ficam salvos neste navegador. Use uma chave própria com cota
+                limitada e revogue-a se o dispositivo for compartilhado.
               </p>
 
               {configError && (
@@ -345,7 +401,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                     onClick={handleSaveApiKey}
                     className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary-hover transition-colors"
                   >
-                    Salvar chave
+                    Salvar configuração
                   </button>
                   <button
                     type="button"
@@ -355,8 +411,8 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                     Limpar
                   </button>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${isGeminiActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                  {isGeminiActive ? 'Gemini ativo' : 'Modo local'}
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${isTessActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                  {isTessActive ? 'TESS ativa' : 'Modo local'}
                 </span>
               </div>
             </div>
@@ -394,7 +450,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
                     : 'bg-background text-foreground border border-surface-border rounded-tl-sm'
                 }`}
               >
-                {message.content}
+                {message.role === 'assistant' ? renderChatMarkdown(message.content) : message.content}
               </article>
             </div>
           ))}
@@ -402,7 +458,7 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
             <div className="flex justify-start">
               <article className="max-w-[85%] rounded-2xl rounded-tl-sm border border-surface-border bg-background px-5 py-4 text-sm text-muted-foreground flex items-center gap-3">
                 <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                {isGeminiActive ? 'Consultando Gemini...' : 'Gerando resposta local...'}
+                {isTessActive ? 'Consultando TESS...' : 'Gerando resposta local...'}
               </article>
             </div>
           )}
@@ -456,9 +512,13 @@ export function ChatbotFab({ reports, isProcessing }: ChatbotFabProps) {
   );
 }
 
-function sanitizeGeminiError(errorMessage: string) {
-  return errorMessage
-    .replace(/\s+/g, ' ')
-    .replace(/AIza[0-9A-Za-z\-_]+/g, '[api-key-redacted]')
-    .trim();
+/**
+ * Nao ha um formato de prefixo conhecido para a chave da TESS (diferente do
+ * `AIza...` do Gemini), entao a redacao busca a ocorrencia literal da propria
+ * chave configurada em vez de um regex de formato.
+ */
+function sanitizeTessError(errorMessage: string, apiKey: string) {
+  const normalized = errorMessage.replace(/\s+/g, ' ').trim();
+  if (!apiKey) return normalized;
+  return normalized.split(apiKey).join('[api-key-redacted]');
 }

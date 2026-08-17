@@ -27,18 +27,18 @@ export function PrivacyPolicy() {
           <h3 className="font-headline-md text-primary">3. Assistente de IA (recurso opcional)</h3>
           <p className="text-body-md leading-relaxed">
             O produto oferece um assistente de IA <strong>opcional e desativado por padrão</strong>. Ele só funciona
-            depois que você informa sua própria chave da API do Gemini e autoriza expressamente o envio, marcando o
-            aviso de privacidade exibido no próprio assistente.
+            depois que você informa sua própria chave da API da TESS (além de Workspace ID e Agent ID) e autoriza
+            expressamente o envio, marcando o aviso de privacidade exibido no próprio assistente.
           </p>
           <p className="text-body-md leading-relaxed">
             Quando ativado, o arquivo PDF continua sem sair do seu navegador, mas um <strong>resumo pseudonimizado da
-            análise</strong> é transmitido para a API do Google (Gemini). Antes do envio, a razão social é substituída
+            análise</strong> é transmitido para a API da TESS. Antes do envio, a razão social é substituída
             por um apelido genérico (&quot;Empresa 1&quot;) e números de CNPJ e CPF são removidos. O resumo ainda contém
             códigos e nomes de contas, saldos, período e os alertas identificados — informações necessárias para a
             interpretação técnica.
           </p>
           <p className="text-body-md leading-relaxed">
-            Esse tratamento passa a ser regido pelos termos e pela política de privacidade do Google. Não temos controle
+            Esse tratamento passa a ser regido pelos termos e pela política de privacidade da TESS. Não temos controle
             sobre retenção ou uso posterior por parte desse provedor. Se preferir não compartilhar nada, basta manter o
             assistente no modo local: todas as análises permanecem disponíveis sem qualquer transmissão.
           </p>
@@ -49,9 +49,10 @@ export function PrivacyPolicy() {
           <p className="text-body-md leading-relaxed">
             Utilizamos apenas cookies essenciais para o funcionamento técnico da plataforma e armazenamento temporário
             de preferências de interface (como o modo de visualização). Não utilizamos cookies de rastreamento de
-            marketing ou publicidade. Caso você opte por salvar a chave da API do Gemini, ela é gravada sem criptografia
+            marketing ou publicidade. Caso você opte por salvar a chave da API da TESS, ela é gravada sem criptografia
             no armazenamento local do seu navegador, expira automaticamente em 30 dias e pode ser apagada a qualquer
-            momento pelo botão &quot;Limpar&quot; no assistente.
+            momento pelo botão &quot;Limpar&quot; no assistente. Workspace ID e Agent ID também ficam salvos localmente,
+            sem prazo de expiração, por não serem informações sensíveis.
           </p>
         </section>
 

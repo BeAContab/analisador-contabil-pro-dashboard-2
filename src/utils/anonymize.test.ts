@@ -85,7 +85,7 @@ describe('stripDocumentNumbers', () => {
 
   // Formato alfanumerico da Receita Federal (2026): 12 primeiros caracteres
   // podem ser letras ou digitos, os 2 ultimos (DV) continuam numericos. Sem
-  // isso o CNPJ passaria batido para o Gemini.
+  // isso o CNPJ passaria batido para a TESS.
   it('removes an alphanumeric CNPJ (new Receita Federal format)', () => {
     expect(stripDocumentNumbers('CNPJ 12.ABC.345/01DE-35 encontrado')).toBe('CNPJ [documento removido] encontrado');
   });

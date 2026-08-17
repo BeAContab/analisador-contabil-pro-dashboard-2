@@ -1,7 +1,7 @@
 import { CompanyReport } from '../types';
 
 /**
- * Camada de pseudonimizacao aplicada a TUDO que sai do navegador rumo ao Gemini.
+ * Camada de pseudonimizacao aplicada a TUDO que sai do navegador rumo a TESS.
  *
  * O parsing do PDF continua 100% local; o unico ponto do produto que atravessa a
  * rede e o chat de IA opcional. Antes de qualquer envio, identificadores diretos
@@ -25,7 +25,7 @@ export interface CompanyAlias {
  * O CNPJ passou a aceitar letras A-Z nos 12 primeiros caracteres a partir do
  * novo formato alfanumerico da Receita Federal (2026) - so os 2 digitos
  * verificadores continuam numericos. Sem isso, um CNPJ nesse formato passaria
- * batido por esta rede de seguranca e vazaria para o Gemini em texto puro.
+ * batido por esta rede de seguranca e vazaria para a TESS em texto puro.
  * CPF continua exclusivamente numerico (nenhuma mudanca anunciada).
  */
 const documentNumberRegex = /\b[A-Z\d]{2}\.?[A-Z\d]{3}\.?[A-Z\d]{3}\/?[A-Z\d]{4}-?\d{2}\b|\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/gi;

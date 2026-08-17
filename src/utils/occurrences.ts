@@ -4,7 +4,7 @@ import { CompanyReport } from '../types';
  * Contagem canonica de ocorrencias de um relatorio.
  *
  * Esta formula estava replicada em quatro lugares (App.tsx, ChatbotFab.tsx,
- * chatbot.ts e gemini.ts). Todas eram identicas, mas manter quatro copias
+ * chatbot.ts e tess.ts). Todas eram identicas, mas manter quatro copias
  * significava que incluir uma nova regra de analise exigiria lembrar dos quatro
  * pontos - e o badge do chat, o resumo do dashboard e o contexto da IA podiam
  * divergir silenciosamente.
