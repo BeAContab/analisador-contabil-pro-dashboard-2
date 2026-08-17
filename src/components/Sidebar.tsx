@@ -50,10 +50,23 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
         Pular para o conteúdo principal
       </a>
 
-      <div className={`p-6 border-b border-surface-border flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-        <h1 className="text-xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-accent" aria-hidden="true">monitoring</span>
-          <span className={isCollapsed ? 'sr-only' : ''}>Analisador Pro</span>
+      <div className={`p-6 border-b border-surface-border flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
+        {/* logo.png e um quadrado 500x500 com o simbolo triangular no topo e o
+            nome da empresa escrito por baixo. Sem ferramenta de edicao de
+            imagem disponivel, o "recorte" e feito via CSS: a imagem e
+            ampliada (154% da largura do contêiner) e alinhada ao topo dentro
+            de uma caixa quadrada com overflow escondido, mostrando so o
+            simbolo. O nome da empresa já aparece como texto ao lado. */}
+        <div className="relative w-10 h-10 flex-shrink-0 overflow-hidden rounded-lg">
+          <img
+            src="/logo.png"
+            alt=""
+            className="absolute left-1/2 top-0 w-[154%] h-auto -translate-x-1/2"
+          />
+        </div>
+        <h1 className={`min-w-0 ${isCollapsed ? 'sr-only' : ''}`}>
+          <span className="block text-base font-bold text-primary leading-tight truncate">Barreira &amp; Associados</span>
+          <span className="block text-xs text-muted-foreground leading-tight truncate">Analisador Pro</span>
         </h1>
       </div>
 
@@ -109,8 +122,13 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
           </span>
           <span className={isCollapsed ? 'sr-only' : ''}>{isDark ? 'Modo Claro' : 'Modo Escuro'}</span>
         </button>
-        <div className={`text-xs text-muted-foreground text-center ${isCollapsed ? 'sr-only' : ''}`}>
-          v{packageJson.version}
+        <div className={`flex flex-col items-center gap-1 ${isCollapsed ? 'sr-only' : ''}`}>
+          <div className="text-xs text-muted-foreground text-center">
+            v{packageJson.version}
+          </div>
+          <div className="text-[11px] text-muted-foreground text-center">
+            Barreira &amp; Associados — Assessoria Contábil
+          </div>
         </div>
       </div>
     </aside>

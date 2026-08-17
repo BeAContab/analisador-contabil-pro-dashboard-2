@@ -459,7 +459,7 @@ function addPdfSection(
     head: [columns],
     body: body.length ? body : [['Nenhum resultado encontrado.']],
     styles: { fontSize: 7, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [21, 78, 94] },
+    headStyles: { fillColor: [50, 75, 83] }, // #324B53 - Azul Petroleo Escuro da marca
     margin: { left: 36, right: 36 }
   });
 

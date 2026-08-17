@@ -7,83 +7,98 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Paleta oficial da marca Barreira & Associados (ver logo/logo.txt):
+   *   Azul Petroleo Escuro   #324B53  - primaria
+   *   Amarelo Dourado/Mostarda #E5A843 - destaque
+   *   Cinza Azulado Medio    #6B8088  - tom intermediario
+   *   Cinza Claro Frio       #A8B8BC  - tom claro
+   *   Branco                 #FFFFFF
+   * success/error ficam fora do rebranding de proposito: sao cores
+   * semanticas universais (sucesso/erro), nao identidade visual.
+   */
   :root {
-    --background: #f4f4f5; /* zinc-100 */
-    --foreground: #09090b; /* zinc-950 */
-    
-    --primary: #0f766e; /* teal-700 / emerald-ish */
+    --background: #f2f4f5;
+    --foreground: #1c2a2e;
+
+    --primary: #324b53; /* Azul Petroleo Escuro */
     --primary-foreground: #ffffff;
-    --primary-hover: #0d9488; 
+    --primary-hover: #263a40;
 
     --surface: #ffffff;
     --surface-80: rgba(255, 255, 255, 0.8);
     --surface-50: rgba(255, 255, 255, 0.5);
     --surface-30: rgba(255, 255, 255, 0.3);
-    --surface-foreground: #09090b;
-    --surface-border: #e4e4e7; /* zinc-200 */
+    --surface-foreground: #1c2a2e;
+    --surface-border: #dce3e5;
 
-    --accent: #0ea5e9; /* sky-500 */
-    --accent-foreground: #ffffff;
+    --accent: #e5a843; /* Amarelo Dourado/Mostarda */
+    --accent-foreground: #324b53;
 
-    --success: #10b981; /* emerald-500 */
+    --success: #10b981; /* emerald-500 - sem alteracao (cor semantica) */
     --success-foreground: #ffffff;
 
-    --warning: #f59e0b; /* amber-500 */
-    --warning-foreground: #ffffff;
+    /* Alinhado ao dourado da marca: o amber anterior (#f59e0b) ja era quase
+       identico, entao unifica em vez de manter duas variacoes de amarelo. */
+    --warning: #e5a843;
+    --warning-foreground: #324b53;
 
-    --error: #ef4444; /* red-500 */
+    --error: #ef4444; /* red-500 - sem alteracao (cor semantica) */
     --error-foreground: #ffffff;
 
-    --muted: #f4f4f5; /* zinc-100 */
-    --muted-foreground: #71717a; /* zinc-500 */
+    --muted: #eaeef0;
+    --muted-foreground: #6b8088; /* Cinza Azulado Medio */
 
     /* Tons "container" (badges/ícones) usados nas páginas institucionais.
-       Cada par e um fundo suave + texto saturado da mesma familia de cor,
-       para distinguir visualmente primary/secondary/tertiary. */
-    --primary-container: #ccfbf1; /* teal-100 */
-    --on-primary-container: #134e4a; /* teal-900 */
-    --secondary-container: #e0f2fe; /* sky-100 */
-    --on-secondary-container: #0c4a6e; /* sky-900 */
-    --tertiary-container: #fef3c7; /* amber-100 */
-    --on-tertiary-container: #78350f; /* amber-900 */
+       A marca so tem 2 matizes reais (azul-petroleo e dourado), entao
+       primary/secondary se diferenciam por valor dentro da mesma familia
+       azul-acinzentada, e tertiary fica reservado para o dourado. */
+    --primary-container: #dce3e5;
+    --on-primary-container: #1c2a2e;
+    --secondary-container: #e9edee;
+    --on-secondary-container: #3d5158;
+    --tertiary-container: #fbe7c2;
+    --on-tertiary-container: #6b4a10;
   }
 
   .dark {
-    --background: #09090b; /* zinc-950 */
-    --foreground: #fafafa; /* zinc-50 */
-    
-    --primary: #14b8a6; /* teal-500 */
-    --primary-foreground: #042f2e;
-    --primary-hover: #0d9488;
+    --background: #10181b;
+    --foreground: #eef2f3;
 
-    --surface: #18181b; /* zinc-900 */
-    --surface-80: rgba(24, 24, 27, 0.8);
-    --surface-50: rgba(24, 24, 27, 0.5);
-    --surface-30: rgba(24, 24, 27, 0.3);
-    --surface-foreground: #fafafa;
-    --surface-border: #27272a; /* zinc-800 */
+    /* Petroleo escuro fica com pouco contraste sobre fundo ja escuro; usa o
+       Cinza Azulado Medio da marca como primaria no dark mode. */
+    --primary: #6b8088;
+    --primary-foreground: #10181b;
+    --primary-hover: #7c939b;
 
-    --accent: #38bdf8; /* sky-400 */
-    --accent-foreground: #082f49;
+    --surface: #182428;
+    --surface-80: rgba(24, 36, 40, 0.8);
+    --surface-50: rgba(24, 36, 40, 0.5);
+    --surface-30: rgba(24, 36, 40, 0.3);
+    --surface-foreground: #eef2f3;
+    --surface-border: #2b383d;
+
+    --accent: #e5a843;
+    --accent-foreground: #10181b;
 
     --success: #10b981;
     --success-foreground: #022c22;
 
-    --warning: #fbbf24;
-    --warning-foreground: #451a03;
+    --warning: #e5a843;
+    --warning-foreground: #10181b;
 
     --error: #f87171;
     --error-foreground: #450a0a;
 
-    --muted: #27272a; /* zinc-800 */
-    --muted-foreground: #a1a1aa; /* zinc-400 */
+    --muted: #202d31;
+    --muted-foreground: #a8b8bc; /* Cinza Claro Frio */
 
-    --primary-container: #134e4a; /* teal-900 */
-    --on-primary-container: #99f6e4; /* teal-200 */
-    --secondary-container: #0c4a6e; /* sky-900 */
-    --on-secondary-container: #bae6fd; /* sky-200 */
-    --tertiary-container: #78350f; /* amber-900 */
-    --on-tertiary-container: #fde68a; /* amber-200 */
+    --primary-container: #24343a;
+    --on-primary-container: #c7d3d6;
+    --secondary-container: #1b282c;
+    --on-secondary-container: #9fb1b6;
+    --tertiary-container: #4a3411;
+    --on-tertiary-container: #f4ce85;
   }
 }
 
