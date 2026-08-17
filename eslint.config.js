@@ -31,6 +31,13 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // eslint-plugin-react-hooks 7 (necessario para suportar eslint 10, ver
+      // package.json) adicionou esta regra como erro por padrao. Ela pega
+      // varios padroes de "sincronizar estado derivado via effect" ja
+      // existentes no projeto (CompanyCard, DataTable, ChatbotFab) que
+      // funcionam corretamente hoje - rebaixado para warning ate serem
+      // revisados e refatorados de proposito, em vez de travar o lint agora.
+      'react-hooks/set-state-in-effect': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       // Legado: muitos parametros de callback/regex nao usados por design nas
       // funcoes de analise (analysisN(rows), matchAll, etc). Sinaliza so o que
