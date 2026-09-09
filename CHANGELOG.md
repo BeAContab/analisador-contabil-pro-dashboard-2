@@ -1,5 +1,22 @@
 ﻿# Changelog
 
+## 1.0.33 - 2026-08-17
+- Assistente de IA passou a funcionar para qualquer visitante do site publicado sem precisar colar chave: adicionado proxy de backend (`api/tess-chat.ts`) que usa uma chave padrao da Barreira & Associados guardada no servidor.
+- Quem preferir ainda pode informar a propria conta TESS (chave, Workspace ID e Agent ID) no painel do assistente, usada no lugar da chave padrao.
+- Atualizada a copia de privacidade (Politica de Privacidade, Seguranca dos Dados, Processamento Local) para refletir o novo comportamento padrao.
+- Endpoint novo com limite de tamanho de payload e limite de requisicoes por IP como mitigacao basica de abuso.
+
+## 1.0.32 - 2026-08-17
+- Corrigida falha no deploy do Vercel causada por conflito de dependencias (`eslint-plugin-react-hooks` desatualizado para a versao do ESLint em uso).
+
+## 1.0.31 - 2026-08-17
+- Substituido o Gemini pela TESS AI como provedor de IA do assistente, mantendo o mesmo padrao de consentimento explicito e expiracao de chave em 30 dias.
+- Respostas do assistente passaram a ser renderizadas com formatacao real (negrito, paragrafos, listas numeradas) em vez de texto corrido com marcadores markdown visiveis.
+- Cada achado prioritario na resposta da IA passou a incluir uma "Acao recomendada" especifica para orientar a conferencia manual.
+
+## 1.0.30 - 2026-08-17
+- Aplicada a identidade visual da marca Barreira & Associados: nova paleta de cores (azul petroleo e dourado), logomarca e nome da empresa no menu lateral, cores atualizadas no PDF exportado e no favicon.
+
 ## 1.0.29 - 2026-07-29
 - Investigado alerta de "linhas nao classificadas": medicao real mostrou que a suposta perda de dados era falso positivo causado por cabecalho e rodape de pagina sendo contados como linha nao reconhecida.
 - Parser passou a classificar cada linha do PDF em tres grupos (contabil, estrutural do relatorio, ou nao reconhecida), garantindo que nenhuma linha e descartada sem registro.
