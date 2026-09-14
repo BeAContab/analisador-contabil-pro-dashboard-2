@@ -1,0 +1,582 @@
+<title>Guia do Analisador Contábil Pro</title>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@500&family=Material+Symbols+Outlined:opsz,wght,FILL@24,400,0&display=swap" rel="stylesheet">
+<style>
+  /* ===== Tokens ===================================================== */
+  :root{
+    --paper:#fbfcfc;
+    --paper-raise:#ffffff;
+    --ink:#1c2a2e;
+    --muted:#5b6e73;
+    --petrol:#324b53;
+    --petrol-deep:#1f343c;
+    --gold:#a56a12;
+    --gold-fill:#e5a843;
+    --gold-soft:#fbf1de;
+    --mist:#edf1f2;
+    --line:#dce3e5;
+    --line-strong:#c3cdd0;
+    --chip-on:#e7f4ee;
+    --chip-on-ink:#1f6b4a;
+    --shadow:0 1px 2px rgba(28,42,46,.06), 0 8px 24px -12px rgba(28,42,46,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#10181b; --paper-raise:#182428; --ink:#eef2f3; --muted:#a8b8bc;
+      --petrol:#6b8088; --petrol-deep:#4d5f65; --gold:#e5a843; --gold-fill:#e5a843;
+      --gold-soft:#241d10; --mist:#182428; --line:#2b383d; --line-strong:#3a4a50;
+      --chip-on:#12271d; --chip-on-ink:#7fd6ab;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#10181b; --paper-raise:#182428; --ink:#eef2f3; --muted:#a8b8bc;
+    --petrol:#6b8088; --petrol-deep:#4d5f65; --gold:#e5a843; --gold-fill:#e5a843;
+    --gold-soft:#241d10; --mist:#182428; --line:#2b383d; --line-strong:#3a4a50;
+    --chip-on:#12271d; --chip-on-ink:#7fd6ab;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  /* ===== Base ========================================================= */
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size:16px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:760px; margin:0 auto; padding:56px 28px 80px}
+  h1,h2,h3{font-family:"Outfit", ui-sans-serif, system-ui, sans-serif; color:var(--ink); text-wrap:balance; margin:0}
+  .mono{font-family:"JetBrains Mono", ui-monospace, monospace}
+  .msi{
+    font-family:'Material Symbols Outlined'; font-weight:400; font-style:normal;
+    font-size:20px; line-height:1; letter-spacing:normal; text-transform:none;
+    display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr;
+    -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased;
+    vertical-align:middle;
+  }
+
+  /* ===== Cover ========================================================= */
+  .cover{display:flex; flex-direction:column; gap:22px; padding-bottom:40px; border-bottom:1px solid var(--line); margin-bottom:44px}
+  .cover-top{display:flex; align-items:center; gap:16px}
+  .mark{flex:none}
+  .brandline{display:flex; flex-direction:column; gap:2px}
+  .brandline .name{font-family:"Outfit"; font-weight:700; font-size:15px; color:var(--petrol)}
+  .brandline .sub{font-size:12px; color:var(--muted); letter-spacing:.02em}
+  .eyebrow{
+    font-family:"Outfit"; font-size:12px; font-weight:600; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--gold);
+  }
+  h1.title{font-size:34px; font-weight:700; line-height:1.15; margin-top:6px; max-width:15ch}
+  .dek{font-size:17px; color:var(--muted); max-width:56ch; margin-top:2px}
+  .cover-meta{display:flex; gap:28px; margin-top:8px; flex-wrap:wrap}
+  .cover-meta div{display:flex; flex-direction:column; gap:2px}
+  .cover-meta .k{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+  .cover-meta .v{font-size:14px; font-weight:600; font-family:"Outfit"}
+
+  /* ===== Prereq box ==================================================== */
+  .prereq{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden; margin-bottom:48px;
+  }
+  .prereq div{background:var(--paper-raise); padding:16px 18px; display:flex; gap:12px; align-items:flex-start}
+  .prereq .msi{color:var(--petrol); font-size:22px}
+  .prereq strong{display:block; font-family:"Outfit"; font-size:14px; margin-bottom:2px}
+  .prereq span{font-size:13px; color:var(--muted); line-height:1.4; display:block}
+
+  /* ===== Overview strip ================================================ */
+  .overview{margin-bottom:56px}
+  .overview h2{font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:600; margin-bottom:14px}
+  .ov-row{display:flex; flex-wrap:wrap; gap:8px}
+  .ov-row a{
+    display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--ink);
+    background:var(--paper-raise); border:1px solid var(--line); border-radius:999px;
+    padding:7px 14px 7px 8px; font-size:13px; font-weight:600; font-family:"Outfit";
+  }
+  .ov-row .n{
+    width:20px; height:20px; border-radius:999px; background:var(--petrol); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:11px; flex:none;
+  }
+
+  /* ===== Steps ========================================================= */
+  .step{
+    display:grid; grid-template-columns:44px 1fr; gap:20px;
+    padding:36px 0; border-top:1px solid var(--line);
+  }
+  .step:last-of-type{border-bottom:1px solid var(--line)}
+  .step-num{
+    font-family:"Outfit"; font-weight:800; font-size:22px; color:var(--petrol);
+    line-height:1;
+  }
+  .step-num .of{display:block; font-size:9px; font-weight:600; color:var(--muted); letter-spacing:.08em; margin-top:6px}
+  .step-body h3{font-size:20px; margin-bottom:6px}
+  .step-body > p.lead{color:var(--muted); font-size:15px; max-width:60ch; margin:0 0 18px}
+  .step-content{display:grid; grid-template-columns:1.05fr 1fr; gap:26px; align-items:start}
+  .step-text ol,.step-text ul{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:9px}
+  .step-text li{font-size:14.5px}
+  .step-text li b{font-weight:600}
+  .tip{
+    margin-top:14px; display:flex; gap:9px; align-items:flex-start;
+    background:var(--gold-soft); border:1px solid color-mix(in srgb, var(--gold-fill) 35%, var(--line));
+    border-radius:10px; padding:11px 13px;
+  }
+  .tip .msi{color:var(--gold); font-size:17px; margin-top:1px}
+  .tip p{margin:0; font-size:13px; color:var(--ink); line-height:1.45}
+
+  /* ===== Device mock frame ============================================= */
+  .mock{
+    background:var(--paper-raise); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); overflow:hidden; break-inside:avoid;
+  }
+  .mock-cap{
+    display:flex; align-items:center; gap:6px; padding:8px 12px;
+    background:var(--mist); border-bottom:1px solid var(--line);
+  }
+  .mock-cap .dot{width:7px; height:7px; border-radius:999px; background:var(--line-strong)}
+  .mock-cap .label{margin-left:6px; font-size:10.5px; color:var(--muted); font-family:"JetBrains Mono"}
+
+  /* -- mini app chrome shared across mocks -- */
+  .app{display:flex; height:100%; font-size:11px}
+  .app-side{width:78px; flex:none; background:var(--paper-raise); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:10px 8px; gap:12px}
+  .app-brand{display:flex; align-items:center; gap:6px}
+  .app-side nav{display:flex; flex-direction:column; gap:5px; flex:1}
+  .app-side .item{display:flex; align-items:center; gap:6px; padding:5px 6px; border-radius:6px; color:var(--muted); font-size:9px}
+  .app-side .item .msi{font-size:14px}
+  .app-side .item.active{background:var(--petrol); color:#fff}
+  .app-main{flex:1; background:var(--mist); padding:14px; overflow:hidden}
+
+  .drop{
+    border:1.5px dashed var(--line-strong); border-radius:10px; background:var(--paper-raise);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; padding:22px 10px; text-align:center; height:100%;
+  }
+  .drop .msi{font-size:30px; color:var(--petrol)}
+  .drop b{font-size:11px}
+  .drop span{font-size:8.5px; color:var(--muted); max-width:22ch}
+  .drop .btn{margin-top:6px}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:5px; background:var(--petrol-deep); color:#fff;
+    border-radius:999px; padding:5px 11px; font-size:9px; font-weight:600; font-family:"Outfit";
+  }
+  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line-strong)}
+  .btn .msi{font-size:12px}
+
+  .bar{height:6px; border-radius:999px; background:var(--line); overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--gold-fill)}
+
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:7px}
+  .kpi{background:var(--paper-raise); border:1px solid var(--line); border-radius:8px; padding:8px}
+  .kpi .k{font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .kpi .v{font-family:"Outfit"; font-weight:700; font-size:15px; margin-top:2px}
+  .kpi .v.gold{color:var(--gold)}
+
+  .row-card{background:var(--paper-raise); border:1px solid var(--line); border-radius:8px; padding:8px 10px; display:flex; align-items:center; justify-content:space-between; margin-top:7px}
+  .row-card .name{font-size:9.5px; font-weight:600}
+  .row-card .sub{font-size:7.5px; color:var(--muted)}
+  .pill{font-size:7.5px; font-weight:700; padding:2px 7px; border-radius:999px}
+  .pill.warn{background:var(--gold-soft); color:var(--gold)}
+  .pill.ok{background:var(--chip-on); color:var(--chip-on-ink)}
+
+  .tabs{display:flex; gap:4px; margin-bottom:7px; flex-wrap:wrap}
+  .tabs .t{font-size:7.5px; padding:3px 7px; border-radius:6px; background:var(--paper-raise); border:1px solid var(--line); color:var(--muted)}
+  .tabs .t.on{background:var(--petrol); color:#fff; border-color:var(--petrol)}
+  table.mini{width:100%; border-collapse:collapse; background:var(--paper-raise); border:1px solid var(--line); border-radius:6px; overflow:hidden}
+  table.mini th{font-size:6.7px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); text-align:left; padding:5px 7px; background:var(--mist); border-bottom:1px solid var(--line)}
+  table.mini td{font-size:8px; padding:5px 7px; border-bottom:1px solid var(--line)}
+  table.mini td.num{font-family:"JetBrains Mono"; font-variant-numeric:tabular-nums}
+  table.mini tr:last-child td{border-bottom:none}
+  .flag{color:var(--gold); font-weight:700}
+
+  .chat{display:flex; flex-direction:column; height:100%}
+  .chat-head{background:var(--petrol); color:#fff; padding:10px 12px}
+  .chat-head .eb{font-size:7px; letter-spacing:.1em; text-transform:uppercase; opacity:.8}
+  .chat-head .ti{font-family:"Outfit"; font-weight:700; font-size:12px}
+  .chat-body{flex:1; padding:10px; display:flex; flex-direction:column; gap:7px; background:var(--mist)}
+  .bubble{max-width:78%; padding:7px 9px; border-radius:9px; font-size:8.3px; line-height:1.4}
+  .bubble.bot{background:var(--paper-raise); border:1px solid var(--line); align-self:flex-start; border-top-left-radius:2px}
+  .bubble.bot b{display:block; font-size:7px; color:var(--gold); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px}
+  .bubble.me{background:var(--petrol); color:#fff; align-self:flex-end; border-top-right-radius:2px}
+  .chat-input{display:flex; gap:6px; padding:8px; border-top:1px solid var(--line); background:var(--paper-raise)}
+  .chat-input .box{flex:1; border:1px solid var(--line); border-radius:8px; font-size:8px; color:var(--muted); padding:6px 8px}
+  .chat-input .send{width:24px; height:24px; border-radius:8px; background:var(--petrol); color:#fff; display:flex; align-items:center; justify-content:center; flex:none}
+  .chat-input .send .msi{font-size:13px}
+
+  .consent{background:var(--gold-soft); border:1px solid color-mix(in srgb, var(--gold-fill) 35%, var(--line)); border-radius:8px; padding:8px; margin:8px; font-size:7.7px; line-height:1.4}
+  .consent .lbl{font-size:6.7px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--gold); margin-bottom:3px}
+  .consent .cb{display:flex; gap:5px; margin-top:5px; align-items:flex-start}
+  .consent .cb .box{width:9px; height:9px; border:1.3px solid var(--petrol); border-radius:2px; flex:none; margin-top:1px}
+
+  /* ===== Tips grid ===================================================== */
+  .tips{margin-top:52px; display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  .tipcard{background:var(--paper-raise); border:1px solid var(--line); border-radius:10px; padding:16px}
+  .tipcard .msi{color:var(--petrol); font-size:20px}
+  .tipcard h4{font-family:"Outfit"; font-size:13.5px; margin:8px 0 4px}
+  .tipcard p{font-size:12.5px; color:var(--muted); margin:0; line-height:1.45}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+  footer .fmark{display:flex; align-items:center; gap:8px}
+  footer .fname{font-family:"Outfit"; font-weight:700; font-size:12px; color:var(--petrol)}
+  footer .fnote{font-size:10.5px; color:var(--muted)}
+
+  /* ===== Responsive (screen) =========================================== */
+  @media (max-width:720px){
+    .step{grid-template-columns:32px 1fr}
+    .step-content{grid-template-columns:1fr}
+    .prereq{grid-template-columns:1fr}
+    .tips{grid-template-columns:1fr}
+    .cover-meta{gap:18px}
+  }
+
+  /* ===== Print ========================================================= */
+  @media print{
+    :root{
+      --paper:#ffffff !important; --paper-raise:#ffffff !important; --ink:#1c2a2e !important;
+      --muted:#4c5d61 !important; --petrol:#324b53 !important; --petrol-deep:#1f343c !important;
+      --gold:#8a5a10 !important; --gold-fill:#e5a843 !important; --gold-soft:#fbf1de !important;
+      --mist:#f1f4f5 !important; --line:#cfd8da !important; --line-strong:#b7c3c6 !important;
+      --chip-on:#e7f4ee !important; --chip-on-ink:#1f6b4a !important; --shadow:none !important;
+    }
+    @page{ size:A4; margin:16mm 15mm 20mm; }
+    body{font-size:12.3px}
+    .page{max-width:none; padding:0; margin:0}
+    .no-print{display:none !important}
+    .cover{margin-bottom:26px; padding-bottom:22px}
+    h1.title{font-size:26px}
+    .overview{margin-bottom:26px}
+    .step{padding:18px 0; break-inside:avoid}
+    .step-content{gap:16px}
+    .mock{box-shadow:none}
+    .tips{margin-top:26px; break-inside:avoid}
+    a{color:inherit; text-decoration:none}
+    footer{break-inside:avoid}
+    @bottom-center{ content: "Página " counter(page) " de " counter(pages); font-size:9px; color:#4c5d61; }
+  }
+</style>
+
+<div class="page">
+
+  <!-- ============ COVER ============ -->
+  <header class="cover">
+    <div class="cover-top">
+      <svg class="mark" width="34" height="34" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="24" height="24" rx="5" fill="var(--paper-raise)" stroke="var(--line)"/>
+        <path d="M3 3 L13 12 L3 21 Z" fill="var(--petrol)"/>
+        <path d="M21 3 L11 12 L21 21 Z" fill="var(--gold-fill)"/>
+      </svg>
+      <div class="brandline">
+        <span class="name">Barreira &amp; Associados</span>
+        <span class="sub">Assessoria Contábil</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="eyebrow">Guia rápido de utilização</div>
+      <h1 class="title">Como usar o Analisador Contábil Pro</h1>
+      <p class="dek">Passo a passo para enviar um balancete, ler os alertas e conversar com o assistente de IA — do upload do PDF à exportação do relatório.</p>
+    </div>
+
+    <div class="cover-meta">
+      <div><span class="k">Versão do sistema</span><span class="v mono">1.0.33</span></div>
+      <div><span class="k">Formato do arquivo</span><span class="v">PDF do balancete</span></div>
+      <div><span class="k">Processamento</span><span class="v">100% local, no navegador</span></div>
+    </div>
+  </header>
+
+  <!-- ============ PREREQS ============ -->
+  <section class="prereq">
+    <div>
+      <span class="msi">picture_as_pdf</span>
+      <div><strong>Um balancete em PDF</strong><span>Exportado do seu sistema contábil, com Conta, S. Anterior, Débito, Crédito e S. Atual.</span></div>
+    </div>
+    <div>
+      <span class="msi">language</span>
+      <div><strong>Navegador atualizado</strong><span>Chrome, Edge ou Firefox recentes. Nenhuma instalação é necessária.</span></div>
+    </div>
+    <div>
+      <span class="msi">smart_toy</span>
+      <div><strong>IA já vem pronta (opcional)</strong><span>O assistente funciona com a chave padrão da Barreira — só é preciso autorizar.</span></div>
+    </div>
+  </section>
+
+  <!-- ============ OVERVIEW ============ -->
+  <nav class="overview">
+    <h2>Nesta ordem</h2>
+    <div class="ov-row">
+      <a href="#passo-1"><span class="n">1</span>Acessar</a>
+      <a href="#passo-2"><span class="n">2</span>Enviar o PDF</a>
+      <a href="#passo-3"><span class="n">3</span>Processamento</a>
+      <a href="#passo-4"><span class="n">4</span>Resumo executivo</a>
+      <a href="#passo-5"><span class="n">5</span>Analisar por empresa</a>
+      <a href="#passo-6"><span class="n">6</span>Exportar</a>
+      <a href="#passo-7"><span class="n">7</span>Assistente de IA</a>
+    </div>
+  </nav>
+
+  <!-- ============ STEP 1 ============ -->
+  <section class="step" id="passo-1">
+    <div class="step-num">01<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Acesse o sistema</h3>
+      <p class="lead">Abra o link do Analisador Contábil Pro. Tudo roda no seu navegador — nenhum cadastro é necessário.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>No menu lateral você encontra <b>Dashboard</b> (área de trabalho), <b>Privacy Policy</b>, <b>Data Security</b> e <b>Documentation</b>.</li>
+            <li>O nome e a marca da <b>Barreira &amp; Associados</b> ficam fixos no topo e no rodapé do menu.</li>
+            <li>O ícone de lua/sol no rodapé alterna entre modo claro e escuro a qualquer momento.</li>
+          </ol>
+          <div class="tip"><span class="msi">info</span><p>O menu lateral pode ser recolhido para uma barra fina de ícones — útil em telas menores. Veja em "Dicas rápidas" no final deste guia.</p></div>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">analisador.barreiraeassociados.com.br</span></div>
+          <div class="app" style="height:190px">
+            <div class="app-side">
+              <div class="app-brand">
+                <svg width="18" height="18" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="var(--paper-raise)" stroke="var(--line)"/><path d="M3 3 L13 12 L3 21 Z" fill="var(--petrol)"/><path d="M21 3 L11 12 L21 21 Z" fill="var(--gold-fill)"/></svg>
+              </div>
+              <nav>
+                <div class="item active"><span class="msi">dashboard</span>Dashboard</div>
+                <div class="item"><span class="msi">policy</span>Privacidade</div>
+                <div class="item"><span class="msi">security</span>Segurança</div>
+                <div class="item"><span class="msi">description</span>Docs</div>
+              </nav>
+              <div class="item"><span class="msi">dark_mode</span>Modo escuro</div>
+            </div>
+            <div class="app-main">
+              <div class="drop" style="height:100%">
+                <span class="msi">cloud_upload</span>
+                <b>Arraste seus balancetes para cá</b>
+                <span>Suporte exclusivo a PDF. Processamento local.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 2 ============ -->
+  <section class="step" id="passo-2">
+    <div class="step-num">02<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Envie o balancete</h3>
+      <p class="lead">Solte o PDF na área tracejada ou selecione o arquivo manualmente. Dá para enviar mais de uma empresa de uma vez.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>Arraste o PDF para a área de upload, <b>ou</b> clique em <span class="mono">Ou selecione os arquivos</span>.</li>
+            <li>Arquivos repetidos (mesmo nome, tamanho e data) são ignorados automaticamente.</li>
+            <li>O PDF nunca sai do seu computador — a leitura acontece inteiramente no navegador.</li>
+          </ol>
+          <div class="tip"><span class="msi">shield_lock</span><p>Por isso o upload não tem limite de sigilo: não existe envio a servidor nesta etapa, só leitura local do arquivo.</p></div>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">upload</span></div>
+          <div style="padding:16px">
+            <div class="drop" style="height:150px; border-color:var(--gold-fill)">
+              <span class="msi" style="color:var(--gold)">description</span>
+              <b>ARTE PRODUCOES DE EVENTOS.pdf</b>
+              <span>2,4&nbsp;MB · pronto para processar</span>
+              <span class="btn" style="margin-top:8px"><span class="msi">attachment</span>Ou selecione os arquivos</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 3 ============ -->
+  <section class="step" id="passo-3">
+    <div class="step-num">03<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Acompanhe o processamento</h3>
+      <p class="lead">O parser lê cada página, reconhece contas e calcula os alertas — normalmente em segundos, mesmo para balancetes longos.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>Uma barra de progresso mostra o andamento arquivo por arquivo.</li>
+            <li>É possível <b>cancelar</b> a qualquer momento, sem travar a página.</li>
+            <li>Ao final, cada empresa processada aparece na lista de resultados.</li>
+          </ol>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">processando</span></div>
+          <div style="padding:22px 18px">
+            <div style="display:flex; justify-content:space-between; font-size:9px; margin-bottom:6px">
+              <span><b>Processando balancete…</b></span><span class="mono">68%</span>
+            </div>
+            <div class="bar"><i style="width:68%"></i></div>
+            <div style="display:flex; justify-content:space-between; margin-top:14px">
+              <span style="font-size:8.5px; color:var(--muted)">Arquivo 1 de 1 · pág. 12/18</span>
+              <span class="btn ghost">Cancelar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 4 ============ -->
+  <section class="step" id="passo-4">
+    <div class="step-num">04<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Veja o resumo executivo</h3>
+      <p class="lead">O topo da tela mostra a contagem geral, e cada empresa vira um cartão com o total de ocorrências em destaque.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>Os cartões de resumo somam empresas processadas, ocorrências e contas não classificadas.</li>
+            <li>Cada empresa tem um <b>badge</b> proporcional ao número de alertas — quanto mais escuro, maior a atenção.</li>
+            <li>Clique numa empresa para abrir o detalhamento por análise.</li>
+          </ol>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">resultados</span></div>
+          <div style="padding:14px">
+            <div class="cards">
+              <div class="kpi"><div class="k">Empresas</div><div class="v">1</div></div>
+              <div class="kpi"><div class="k">Ocorrências</div><div class="v gold">22</div></div>
+              <div class="kpi"><div class="k">Não classificadas</div><div class="v">0</div></div>
+            </div>
+            <div class="row-card">
+              <div>
+                <div class="name">RIBEIRO VILLAR IMOBILIÁRIA LTDA</div>
+                <div class="sub">Período 01/jan a 31/dez · exemplo</div>
+              </div>
+              <span class="pill warn">22 ocorrências</span>
+            </div>
+            <div class="row-card">
+              <div><div class="name">Contas sem movimentação</div><div class="sub">11 contas paradas no período</div></div>
+              <span class="pill ok">informativo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 5 ============ -->
+  <section class="step" id="passo-5">
+    <div class="step-num">05<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Explore as análises por empresa</h3>
+      <p class="lead">Cada empresa tem abas para saldos invertidos, contas sem movimentação e as demais análises — cada linha já vem com uma ação corretiva sugerida.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>Use as abas para alternar entre <b>Saldos invertidos</b>, <b>Clientes</b>, <b>Fornecedores</b>, <b>CMV x Receita</b> e as demais análises.</li>
+            <li>A coluna <b>Ação corretiva</b> traz a orientação prática de conferência para aquela linha.</li>
+            <li>Tabelas longas são paginadas — use a navegação no rodapé da tabela.</li>
+          </ol>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">saldos invertidos</span></div>
+          <div style="padding:14px">
+            <div class="tabs">
+              <span class="t on">Saldos invertidos</span>
+              <span class="t">Sem movimentação</span>
+              <span class="t">Clientes</span>
+              <span class="t">CMV x Receita</span>
+            </div>
+            <table class="mini">
+              <tr><th>Conta</th><th>Nome</th><th>S. Atual</th><th>Ação corretiva</th></tr>
+              <tr><td class="num">1.1.01.003</td><td>Itaú Yield Plus</td><td class="num flag">1.240,00 C</td><td>Conferir extrato bancário</td></tr>
+              <tr><td class="num">2.4.13.004</td><td>Redução de Capital</td><td class="num flag">318,50 D</td><td>Revisar lançamento societário</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 6 ============ -->
+  <section class="step" id="passo-6">
+    <div class="step-num">06<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Exporte o relatório</h3>
+      <p class="lead">Gere um PDF pronto para arquivar ou uma planilha Excel com todos os relatórios que tiveram ocorrência.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>O botão de exportação fica no topo do detalhamento de cada empresa.</li>
+            <li>O <b>PDF</b> sai formatado com o cabeçalho da empresa, período e a cor da marca.</li>
+            <li>O <b>Excel</b> reúne, numa única aba, só os relatórios com ocorrência — pronto para enviar ao cliente.</li>
+          </ol>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">exportar</span></div>
+          <div style="padding:26px 18px; display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center; height:140px">
+            <span class="btn" style="padding:8px 16px; font-size:10px"><span class="msi">picture_as_pdf</span>Baixar PDF</span>
+            <span class="btn ghost" style="padding:8px 16px; font-size:10px"><span class="msi">table_chart</span>Baixar Excel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STEP 7 ============ -->
+  <section class="step" id="passo-7">
+    <div class="step-num">07<span class="of">de 07</span></div>
+    <div class="step-body">
+      <h3>Converse com o assistente de IA</h3>
+      <p class="lead">O botão flutuante abre um assistente que já entende os resultados processados — sem precisar colar nenhuma chave.</p>
+      <div class="step-content">
+        <div class="step-text">
+          <ol>
+            <li>Clique no ícone de robô no canto inferior direito para abrir o assistente.</li>
+            <li>Na engrenagem, marque o <b>aviso de privacidade</b> — a IA já funciona com a chave padrão da Barreira.</li>
+            <li>Use as sugestões prontas ou digite sua pergunta; cada achado vem com uma <b>ação recomendada</b>.</li>
+          </ol>
+          <div class="tip"><span class="msi">verified_user</span><p>Só um resumo pseudonimizado (sem CNPJ/CPF, razão social vira "Empresa 1") sai do navegador. Quem preferir pode usar a própria conta TESS no lugar da padrão.</p></div>
+        </div>
+        <div class="mock">
+          <div class="mock-cap"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">assistente de ia</span></div>
+          <div class="chat" style="height:230px">
+            <div class="chat-head"><div class="eb">Assistente de IA</div><div class="ti">Analisador Pro</div></div>
+            <div class="consent">
+              <div class="lbl">O que sai do seu navegador</div>
+              Resumo pseudonimizado enviado via chave padrão da Barreira &amp; Associados.
+              <div class="cb"><span class="box"></span><span>Autorizo o envio para a TESS</span></div>
+            </div>
+            <div class="chat-body" style="flex:none; padding-top:0">
+              <div class="bubble me">Quais achados exigem prioridade?</div>
+              <div class="bubble bot"><b>Achados priorizados</b>7 saldos invertidos — <b>Ação recomendada:</b> conferir extratos bancários primeiro.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TIPS ============ -->
+  <section class="tips">
+    <div class="tipcard">
+      <span class="msi">chevron_left</span>
+      <h4>Menu recolhível</h4>
+      <p>Clique em "Recolher menu" para uma barra fina só com ícones — a preferência fica salva no navegador.</p>
+    </div>
+    <div class="tipcard">
+      <span class="msi">dark_mode</span>
+      <h4>Modo claro/escuro</h4>
+      <p>Alterne pelo ícone no rodapé do menu lateral a qualquer momento, sem perder o que já foi processado.</p>
+    </div>
+    <div class="tipcard">
+      <span class="msi">policy</span>
+      <h4>Política e segurança</h4>
+      <p>As páginas "Privacy Policy" e "Data Security" no menu detalham exatamente o que fica local e o que é enviado.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="fmark">
+      <svg width="16" height="16" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="var(--paper-raise)" stroke="var(--line)"/><path d="M3 3 L13 12 L3 21 Z" fill="var(--petrol)"/><path d="M21 3 L11 12 L21 21 Z" fill="var(--gold-fill)"/></svg>
+      <span class="fname">Barreira &amp; Associados</span>
+    </div>
+    <span class="fnote">Guia do Analisador Contábil Pro · uso interno</span>
+  </footer>
+
+</div>

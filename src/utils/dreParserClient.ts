@@ -1,17 +1,10 @@
-import type { CompanyReport } from '../types';
+import type { DreReport } from '../types';
 import type { ParserWorkerRequest, ParserWorkerResponse } from '../workers/parserProtocol';
+import { ParseCancelledError } from './parserClient';
 
-/** Lancado quando `cancel()` interrompe um arquivo em andamento. */
-export class ParseCancelledError extends Error {
-  constructor() {
-    super('Processamento cancelado.');
-    this.name = 'ParseCancelledError';
-  }
-}
-
-export interface ParserClient {
-  /** Processa um arquivo no worker. Rejeita com ParseCancelledError se cancelado. */
-  parse(file: File): Promise<CompanyReport>;
+export interface DreParserClient {
+  /** Processa um arquivo de DRE no worker. Rejeita com ParseCancelledError se cancelado. */
+  parse(file: File): Promise<DreReport>;
   /** Aborta o arquivo em andamento encerrando o worker (unica forma de parar trabalho preso em CPU). */
   cancel(): void;
   /** Libera o worker; chamar no unmount. */
@@ -19,16 +12,21 @@ export interface ParserClient {
 }
 
 interface Pending {
-  resolve: (report: CompanyReport) => void;
+  resolve: (report: DreReport) => void;
   reject: (error: Error) => void;
 }
 
-export function createParserClient(): ParserClient {
+/**
+ * Irmao de `createParserClient` (parserClient.ts), mesma logica de
+ * worker/fila/cancelamento, so que enviando `kind: 'dre'` e aguardando
+ * `DreReport`. Aponta pro mesmo arquivo de worker (`parser.worker.ts`), que
+ * roteia pelo `kind` - assim o pdf.js so e empacotado uma vez pelo Vite,
+ * mesmo com dois clients/workers distintos em tempo de execucao.
+ */
+export function createDreParserClient(): DreParserClient {
   let worker: Worker | null = null;
   let nextId = 0;
   const pending = new Map<number, Pending>();
-  // Uma falha de construcao do worker e permanente (browser sem suporte,
-  // CSP bloqueando blob/module worker): nao vale retentar a cada arquivo.
   let workerUnavailable = false;
 
   function handleMessage(event: MessageEvent<ParserWorkerResponse>) {
@@ -36,19 +34,12 @@ export function createParserClient(): ParserClient {
     const entry = pending.get(data.id);
     if (!entry) return;
     pending.delete(data.id);
-    // Este client so envia requisicoes kind:'balancete' (ver dreParserClient.ts
-    // para o irmao que envia kind:'dre', com seu proprio Worker), entao uma
-    // resposta ok sempre deveria trazer CompanyReport - mas o discriminante
-    // `kind` da union precisa ser checado explicitamente para o TypeScript
-    // estreitar o tipo, e o `else` cobre a falha (nunca deveria acontecer, ja
-    // que os dois clients tem workers separados) sem deixar a promise pendurada.
     if (!data.ok) entry.reject(new Error(data.error));
-    else if (data.kind === 'balancete') entry.resolve(data.report);
+    else if (data.kind === 'dre') entry.resolve(data.report);
     else entry.reject(new Error('Resposta inesperada do worker de parsing (kind incompativel).'));
   }
 
   function handleError(event: ErrorEvent) {
-    // Erro fatal no worker derruba tudo que estava em voo.
     const error = new Error(event.message || 'Falha no worker de parsing.');
     pending.forEach((entry) => entry.reject(error));
     pending.clear();
@@ -68,8 +59,6 @@ export function createParserClient(): ParserClient {
     if (workerUnavailable) return null;
 
     try {
-      // A URL relativa + import.meta.url e o formato que o Vite reconhece para
-      // empacotar o worker (e gerar o chunk proprio dele no build).
       const created = new Worker(new URL('../workers/parser.worker.ts', import.meta.url), {
         type: 'module'
       });
@@ -78,28 +67,25 @@ export function createParserClient(): ParserClient {
       worker = created;
       return created;
     } catch (error) {
-      console.warn('[parserClient] Worker indisponivel, usando a thread principal:', error);
+      console.warn('[dreParserClient] Worker indisponivel, usando a thread principal:', error);
       workerUnavailable = true;
       return null;
     }
   }
 
   return {
-    async parse(file: File): Promise<CompanyReport> {
+    async parse(file: File): Promise<DreReport> {
       const active = ensureWorker();
 
       if (!active) {
-        // Fallback: mantem o app funcional mesmo sem worker. `parsePdfFile`
-        // devolve a thread entre paginas (ver yieldToBrowser) exatamente para
-        // este caso.
-        const { parsePdfFile } = await import('./parser');
-        return parsePdfFile(file);
+        const { parseDreFile } = await import('./dreParser');
+        return parseDreFile(file);
       }
 
       const id = nextId++;
-      const request: ParserWorkerRequest = { id, file, kind: 'balancete' };
+      const request: ParserWorkerRequest = { id, file, kind: 'dre' };
 
-      return new Promise<CompanyReport>((resolve, reject) => {
+      return new Promise<DreReport>((resolve, reject) => {
         pending.set(id, { resolve, reject });
         active.postMessage(request);
       });
@@ -109,8 +95,6 @@ export function createParserClient(): ParserClient {
       if (pending.size === 0 && !worker) return;
       pending.forEach((entry) => entry.reject(new ParseCancelledError()));
       pending.clear();
-      // Encerrar e a unica forma confiavel de interromper parsing ja em curso;
-      // o proximo `parse()` recria o worker sob demanda.
       teardown();
     },
 

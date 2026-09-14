@@ -11,6 +11,8 @@ interface DropzoneProps {
   isProcessing: boolean;
   onProcess: () => void;
   onClear: () => void;
+  title?: string;
+  description?: string;
 }
 
 export function Dropzone({
@@ -23,7 +25,9 @@ export function Dropzone({
   onRemoveFile,
   isProcessing,
   onProcess,
-  onClear
+  onClear,
+  title = 'Arraste seus balancetes para cá',
+  description = 'Suporte exclusivo para arquivos PDF. Todo o processamento é feito localmente, garantindo a segurança dos seus dados.'
 }: DropzoneProps) {
   return (
     <section className="w-full space-y-8 animate-in slide-in-from-bottom-4 duration-700 fade-in">
@@ -50,10 +54,10 @@ export function Dropzone({
         
         <div className="text-center max-w-lg flex flex-col gap-2 relative z-10">
           <h3 className="text-2xl font-bold text-foreground tracking-tight">
-            Arraste seus balancetes para cá
+            {title}
           </h3>
           <p className="text-muted-foreground text-sm">
-            Suporte exclusivo para arquivos PDF. Todo o processamento é feito localmente, garantindo a segurança dos seus dados.
+            {description}
           </p>
         </div>
 

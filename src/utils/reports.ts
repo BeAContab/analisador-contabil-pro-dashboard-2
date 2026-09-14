@@ -59,7 +59,11 @@ export const analysisOrder: AnalysisKind[] = [
   'analysis9',
   'analysis10',
   'analysis11',
-  'analysis12'
+  'analysis12',
+  'analysis13',
+  'analysis14',
+  'analysis15',
+  'analysis16'
 ];
 
 export const reportTabs: Array<{ kind: ReportKind; label: string }> = [
@@ -77,7 +81,11 @@ export const reportTabs: Array<{ kind: ReportKind; label: string }> = [
   { kind: 'analysis9', label: 'Fornecedores sem Nenhum Pagamento Registrado' },
   { kind: 'analysis10', label: 'CMV x Receita Total' },
   { kind: 'analysis11', label: 'Depreciacao Acumulada x Bens' },
-  { kind: 'analysis12', label: 'Despesas com Saldo Credor Indevido' }
+  { kind: 'analysis12', label: 'Despesas com Saldo Credor Indevido' },
+  { kind: 'analysis13', label: 'Salário Família/Maternidade a Compensar' },
+  { kind: 'analysis14', label: 'Distribuição Antecipada de Lucros no Fechamento' },
+  { kind: 'analysis15', label: 'Empréstimos a Sócios no Fechamento' },
+  { kind: 'analysis16', label: 'Adiantamentos a Fornecedores e Clientes' }
 ];
 
 export function reportRows(company: CompanyReport, kind: ReportKind) {
@@ -202,6 +210,18 @@ export function correctiveAction(kind: ReportKind, row?: LedgerLine | InvertedBa
   }
   if (kind === 'analysis12') {
     return 'Revisar classificacao e lancamentos da conta de despesa, pois ela encerrou com saldo credor fora dos grupos de excecao permitidos.';
+  }
+  if (kind === 'analysis13') {
+    return 'Conferir por que a conta de compensacao (Cod. R. 29/30) nao fechou zerada e regularizar a compensacao com o INSS.';
+  }
+  if (kind === 'analysis14') {
+    return 'Verificar por que a Distribuicao Antecipada de Lucros nao foi zerada no fechamento do exercicio e ajustar os lancamentos contra Lucros Acumulados.';
+  }
+  if (kind === 'analysis15') {
+    return 'Revisar com o cliente a natureza e a regularizacao do emprestimo em aberto com socio/terceiro no fechamento do exercicio (risco societario e de distribuicao disfarcada de lucro).';
+  }
+  if (kind === 'analysis16') {
+    return 'Solicitar o razao contabil da conta para identificar o fornecedor ou cliente correspondente a cada saldo em aberto.';
   }
 
   return 'Revisar a origem do alerta e ajustar os lancamentos ou classificacoes contabeis relacionados.';

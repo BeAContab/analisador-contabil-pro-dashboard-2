@@ -3,6 +3,8 @@ dist/
 .vite/
 arquivos/
 arquivos_de_exemplo/
+acompanhamentos/
+balancetes/
 .env
 .env.local
 .env.development.local

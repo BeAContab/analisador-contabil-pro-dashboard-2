@@ -2,7 +2,7 @@
 
 **Transforme balancetes em PDF em insights contábeis em segundos — direto no navegador, sem enviar dados para nenhum servidor.**
 
-Chega de conferir balancetes linha por linha. O Analisador Contábil Pro faz upload em lote dos seus PDFs, aplica automaticamente as principais regras de consistência contábil e devolve um relatório executivo pronto para o cliente, com exportação em Excel e PDF.
+Chega de conferir balancetes linha por linha. O Analisador Contábil Pro faz upload em lote dos seus PDFs, aplica automaticamente as principais regras de consistência contábil e devolve um relatório executivo pronto para o cliente, com exportação em Excel e PDF. Também conta com um fluxo dedicado para análise de DREs (Demonstração do Resultado).
 
 ---
 
@@ -10,6 +10,7 @@ Chega de conferir balancetes linha por linha. O Analisador Contábil Pro faz upl
 
 - ⚡ **Rápido** — analise dezenas de balancetes de uma vez, com processamento local no navegador (nenhum arquivo sobe para servidores externos).
 - 🔍 **Preciso** — detecta saldos invertidos, contas sem movimentação, inconsistências entre CMV e Receita e outras regras contábeis relevantes.
+- 📊 **Análise de DRE** — confere a cascata de resultado (Receita Bruta → Lucro do Exercício), variações mês a mês, margens e comparativo anual das Demonstrações do Resultado.
 - 📈 **Visual** — resumo executivo com cards de status, contagem de ocorrências e drill-down por empresa.
 - 🤖 **Inteligente** — assistente de IA (TESS) integrado para tirar dúvidas sobre os achados, com fallback em modo local.
 - 📤 **Pronto para entrega** — exporte relatórios formatados em PDF e Excel com um clique.
@@ -24,6 +25,7 @@ Chega de conferir balancetes linha por linha. O Analisador Contábil Pro faz upl
 |---|---|
 | 📁 Upload em lote | Drag and drop de múltiplos PDFs de balancetes de uma só vez |
 | ✅ Análise automatizada | Saldos invertidos, contas sem movimentação, CMV x Receita e outras regras contábeis |
+| 📊 Análise de DRE | Conferência da cascata de resultado, variação mês a mês, margens e comparativo anual |
 | 📋 Resumo executivo | Cards de status, relatórios afetados e total de ocorrências |
 | 🏢 Drill-down por empresa | Tabelas ordenáveis e paginadas para cada empresa analisada |
 | 🎨 Tema claro/escuro | Persistência automática via `localStorage` |

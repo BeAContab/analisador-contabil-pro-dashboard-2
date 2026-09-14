@@ -43,16 +43,17 @@ const standaloneMoneyRegex = /^\(?\d{1,3}(?:\.\d{3})*,\d{2}\)?[DC]?$/i;
 const defaultNatureAccounts = ['1.2.05.007', '2.4.13.004'];
 
 /**
- * Extrai o texto do PDF e agrupa em linhas logicas.
- *
- * Separado de `parsePdfFile` para que a etapa de extracao possa ser inspecionada
- * isoladamente - e o unico jeito de medir quantas linhas brutas o pdf.js
- * produziu versus quantas o parser conseguiu classificar.
+ * Extrai os itens de texto posicionados do PDF, pagina por pagina, sem
+ * nenhuma interpretacao de layout - so pdf.js puro. Separado de
+ * `extractPageLines` para que o parser de DRE (`dreParser.ts`) possa
+ * reaproveitar a extracao e fazer seu proprio agrupamento por coluna (a DRE
+ * tem 8 colunas fixas por posicao X, diferente da linha unica que o
+ * balancete precisa) sem duplicar a leitura do pdf.js.
  */
-export async function extractPageLines(file: File): Promise<PageLine[]> {
+export async function extractPageItems(file: File): Promise<TextItem[][]> {
   const buffer = await file.arrayBuffer();
   const document = await pdfjsLib.getDocument({ data: buffer }).promise;
-  const pageLines: PageLine[] = [];
+  const pages: TextItem[][] = [];
 
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
@@ -75,7 +76,7 @@ export async function extractPageLines(file: File): Promise<PageLine[]> {
       })
       .filter((item) => item.text.trim().length > 0);
 
-    pageLines.push(...groupItemsIntoLines(items));
+    pages.push(items);
 
     // Devolve a thread ao navegador entre paginas para que a barra de
     // progresso continue pintando em PDFs grandes.
@@ -84,7 +85,19 @@ export async function extractPageLines(file: File): Promise<PageLine[]> {
     }
   }
 
-  return pageLines;
+  return pages;
+}
+
+/**
+ * Extrai o texto do PDF e agrupa em linhas logicas (uma string por linha).
+ *
+ * Separado de `parsePdfFile` para que a etapa de extracao possa ser inspecionada
+ * isoladamente - e o unico jeito de medir quantas linhas brutas o pdf.js
+ * produziu versus quantas o parser conseguiu classificar.
+ */
+export async function extractPageLines(file: File): Promise<PageLine[]> {
+  const pages = await extractPageItems(file);
+  return pages.flatMap((items) => groupItemsIntoLines(items));
 }
 
 export async function parsePdfFile(file: File): Promise<CompanyReport> {
@@ -129,7 +142,7 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       rows
     );
     const comparisonReport = buildComparisonReport(rows);
-    const analysisReports = buildAnalysisReports(rows);
+    const analysisReports = buildAnalysisReports(rows, meta.period);
 
     if (rows.length === 0) {
       errors.push('Não foi possível identificar linhas contábeis neste arquivo.');
@@ -172,7 +185,7 @@ export async function parsePdfFile(file: File): Promise<CompanyReport> {
       invertedRows: [],
       zeroMovementRows: [],
       comparisonReport: buildComparisonReport([]),
-      analysisReports: buildAnalysisReports([]),
+      analysisReports: buildAnalysisReports([], 'Período não identificado'),
       errors: [
         'Não foi possível ler este PDF. Verifique se o arquivo está no formato esperado.',
         `Detalhe técnico: ${detail}`
@@ -198,7 +211,17 @@ interface LineBucket {
   items: TextItem[];
 }
 
-export function groupItemsIntoLines(items: TextItem[]): PageLine[] {
+/**
+ * Agrupa itens de texto posicionados em linhas por proximidade vertical (Y).
+ * Assume que todos os itens vem de uma unica pagina (o Y so faz sentido
+ * comparado dentro da mesma pagina) - por isso `extractPageItems` devolve um
+ * array por pagina em vez de tudo achatado.
+ *
+ * Exportado para o parser de DRE reaproveitar o mesmo agrupamento por linha,
+ * mas mantendo os itens separados (sem juntar em uma unica string) - a DRE
+ * precisa dos itens individuais para casar cada um com sua coluna por posicao X.
+ */
+export function bucketItemsByLine(items: TextItem[]): TextItem[][] {
   const buckets: LineBucket[] = [];
 
   // Os itens ja vem ordenados por Y decrescente, entao todos os fragmentos de
@@ -216,9 +239,12 @@ export function groupItemsIntoLines(items: TextItem[]): PageLine[] {
       }
     });
 
-  return buckets.map((bucket) => {
-    const sorted = bucket.items.sort((a, b) => a.x - b.x);
-    // Todo LineBucket nasce com >=1 item e nunca e esvaziado, entao `first`
+  return buckets.map((bucket) => bucket.items.sort((a, b) => a.x - b.x));
+}
+
+export function groupItemsIntoLines(items: TextItem[]): PageLine[] {
+  return bucketItemsByLine(items).map((sorted) => {
+    // Todo bucket nasce com >=1 item e nunca e esvaziado, entao `first`
     // sempre existe - mas noUncheckedIndexedAccess nao consegue provar isso
     // so olhando o tipo `TextItem[]`.
     const first = sorted[0];
@@ -617,7 +643,7 @@ function buildComparisonReport(rows: LedgerLine[]): BalanceComparisonReport {
   };
 }
 
-function buildAnalysisReports(rows: LedgerLine[]): AnalysisReport[] {
+function buildAnalysisReports(rows: LedgerLine[], period: string): AnalysisReport[] {
   return [
     buildAnalysis1(rows),
     buildAnalysis2(rows),
@@ -630,7 +656,11 @@ function buildAnalysisReports(rows: LedgerLine[]): AnalysisReport[] {
     buildAnalysis9(rows),
     buildAnalysis10(rows),
     buildAnalysis11(rows),
-    buildAnalysis12(rows)
+    buildAnalysis12(rows),
+    buildAnalysis13(rows),
+    buildAnalysis14(rows, period),
+    buildAnalysis15(rows, period),
+    buildAnalysis16(rows)
   ];
 }
 
@@ -1060,6 +1090,179 @@ function buildAnalysis12(rows: LedgerLine[]): AnalysisReport {
   };
 }
 
+/**
+ * Cod. R. 29 e 30 sao estaveis entre empresas reais (confirmado em 7 dos 16
+ * balancetes de exemplo) - mesmo padrao de buildAnalysis2 (Cliente PF, Cod. R.
+ * 142). Mas Cod. R. sozinho nao basta: no BALANCETE_FICTICIO.pdf de exemplo,
+ * Cod. R. 29/30 caem por coincidencia em INTANGIVEL/CUSTO (contas sem relacao
+ * nenhuma), porque nesse arquivo sintetico a numeracao de contas genericas e
+ * sequencial. Por isso o nome da conta tambem precisa bater, igual
+ * buildAnalysis2 ja faz para Cliente PF. Diferente de buildAnalysis2, a
+ * ausencia da conta NAO gera atencao: 9 das 16 empresas de exemplo
+ * simplesmente nao tem essa operacao no periodo, entao "conta nao encontrada"
+ * seria ruido, nao alerta.
+ */
+function buildAnalysis13(rows: LedgerLine[]): AnalysisReport {
+  const matchedRows = rows.filter((row) => {
+    const normalizedName = normalizeForCompare(row.name);
+    if (row.code === '29') return normalizedName.includes('SALARIO FAMILIA');
+    if (row.code === '30') return normalizedName.includes('SALARIO MATERNIDADE');
+    return false;
+  });
+  const flaggedRows = matchedRows.filter(
+    (row) =>
+      !isZeroMoney(row.previousBalance, row.previousBalanceNumber) ||
+      !isZeroMoney(row.currentBalance, row.currentBalanceNumber)
+  );
+
+  return {
+    kind: 'analysis13',
+    title: 'Salário Família/Maternidade a Compensar',
+    intro:
+      'Verifica se as contas de Salário Família e Salário Maternidade a Compensar (Cod. R. 29 e 30) fecham o período com S. Anterior e S. Atual zerados.',
+    message:
+      matchedRows.length === 0
+        ? 'Nenhuma conta com Cod. R. 29 ou 30 foi localizada neste balancete.'
+        : flaggedRows.length > 0
+          ? 'Atenção: há conta de Salário Família/Maternidade a Compensar com S. Anterior ou S. Atual diferente de zero.'
+          : 'Tudo OK: as contas de Salário Família/Maternidade a Compensar estão zeradas.',
+    rows: flaggedRows,
+    isAttention: flaggedRows.length > 0
+  };
+}
+
+/**
+ * Cod. R. 359 e o identificador mais estavel encontrado entre os 16
+ * balancetes de exemplo - sempre na conta 1.1.04.019, mesmo entre empresas
+ * com planos de contas diferentes. So faz sentido conferir "zerou no
+ * fechamento" em balancetes cujo periodo termina em dezembro - fora disso a
+ * conta pode legitimamente ter saldo (ex.: MEDICAR.pdf, abril).
+ */
+function buildAnalysis14(rows: LedgerLine[], period: string): AnalysisReport {
+  const title = 'Distribuição Antecipada de Lucros no Fechamento';
+  const intro =
+    'Em balancetes cujo período de referência termina em dezembro, verifica se a conta Distribuição Antecipada de Lucros (Cod. R. 359) foi zerada no fechamento do exercício.';
+
+  if (!isDecemberClosing(period)) {
+    return {
+      kind: 'analysis14',
+      title,
+      intro,
+      message: 'Não aplicável: esta análise só é avaliada em balancetes de fechamento (período terminando em dezembro).',
+      rows: [],
+      isAttention: false
+    };
+  }
+
+  const distributionRow = rows.find(
+    (row) => row.code === '359' && normalizeForCompare(row.name).includes('DISTRIBUICAO ANTECIPADA DE LUCROS')
+  );
+  const isAttention = Boolean(
+    distributionRow && !isZeroMoney(distributionRow.currentBalance, distributionRow.currentBalanceNumber)
+  );
+
+  return {
+    kind: 'analysis14',
+    title,
+    intro,
+    message: !distributionRow
+      ? 'Nenhuma conta com Cod. R. 359 foi localizada neste balancete de fechamento.'
+      : isAttention
+        ? 'Atenção: a Distribuição Antecipada de Lucros não foi zerada no fechamento do exercício.'
+        : 'Tudo OK: a Distribuição Antecipada de Lucros está zerada no fechamento.',
+    rows: isAttention && distributionRow ? [distributionRow] : [],
+    isAttention
+  };
+}
+
+/**
+ * O codigo de conta e o Cod. R. de "emprestimos a socios/terceiros" NAO sao
+ * estaveis entre empresas (variam entre 1.2.01.013/.014 no ativo e
+ * 2.2.01.007/.013/.027 no passivo, em pelo menos 3 planos de contas
+ * diferentes usados pelo mesmo escritorio) - o nome da conta e o unico
+ * identificador confiavel encontrado na varredura dos 16 balancetes de
+ * exemplo. So avalia em fechamento de dezembro; e so listagem informativa por
+ * pedido explicito do usuario, sem julgar se o emprestimo esta "certo".
+ */
+function buildAnalysis15(rows: LedgerLine[], period: string): AnalysisReport {
+  const title = 'Empréstimos a Sócios no Fechamento';
+  const intro =
+    'Em balancetes cujo período de referência termina em dezembro, lista os empréstimos em aberto entre a empresa e sócios ou terceiros, no ativo (1.2.01) e no passivo (2.2.01), para revisão societária e fiscal.';
+
+  if (!isDecemberClosing(period)) {
+    return {
+      kind: 'analysis15',
+      title,
+      intro,
+      message: 'Não aplicável: esta análise só é avaliada em balancetes de fechamento (período terminando em dezembro).',
+      rows: [],
+      isAttention: false
+    };
+  }
+
+  const isLoanName = (name: string) => {
+    const normalized = normalizeForCompare(name);
+    return normalized.includes('EMPRESTIMO') && (normalized.includes('SOCIO') || normalized.includes('TERCEIRO'));
+  };
+
+  const candidateRows = [...findAccountFamily(rows, '1.2.01'), ...findAccountFamily(rows, '2.2.01')];
+  const flaggedRows = candidateRows.filter(
+    (row) => isLoanName(row.name) && !isZeroMoney(row.currentBalance, row.currentBalanceNumber)
+  );
+
+  return {
+    kind: 'analysis15',
+    title,
+    intro,
+    message:
+      flaggedRows.length > 0
+        ? 'Atenção: há empréstimos a sócios/terceiros em aberto no fechamento do exercício.'
+        : 'Tudo OK: não foram encontrados empréstimos a sócios/terceiros em aberto no fechamento.',
+    rows: flaggedRows,
+    isAttention: flaggedRows.length > 0
+  };
+}
+
+/**
+ * Cod. R. de adiantamentos a fornecedores varia bastante entre empresas
+ * (18447, 288 e outras excecoes na varredura dos 16 balancetes de exemplo);
+ * o lado cliente e mais estavel (1711) mas o nome da conta e usado aqui nos
+ * dois lados por consistencia. Sem filtro de periodo - vale o ano todo.
+ * Listagem informativa (nao e erro ter adiantamento em aberto) com uma acao
+ * corretiva fixa: pedir o razao para identificar a contraparte.
+ */
+function buildAnalysis16(rows: LedgerLine[]): AnalysisReport {
+  const isSupplierAdvance = (name: string) => {
+    const normalized = normalizeForCompare(name);
+    return normalized.includes('ADIANTAMENTO') && normalized.includes('FORNECEDOR');
+  };
+  const isClientAdvance = (name: string) => {
+    const normalized = normalizeForCompare(name);
+    return normalized.includes('ADIANTAMENTO') && normalized.includes('CLIENTE');
+  };
+
+  const flaggedRows = rows
+    .filter(
+      (row) =>
+        (row.account.startsWith('1') && isSupplierAdvance(row.name)) ||
+        (row.account.startsWith('2') && isClientAdvance(row.name))
+    )
+    .filter((row) => !isZeroMoney(row.currentBalance, row.currentBalanceNumber));
+
+  return {
+    kind: 'analysis16',
+    title: 'Adiantamentos a Fornecedores e Clientes',
+    intro:
+      'Lista as contas de Adiantamento a Fornecedores e Adiantamento de Clientes com saldo em aberto, para solicitar o razão contábil e identificar a contraparte de cada valor.',
+    message:
+      flaggedRows.length > 0
+        ? 'Adiantamentos a fornecedores e/ou clientes com saldo em aberto - solicitar o razão contábil para identificar a contraparte.'
+        : 'Nenhum adiantamento a fornecedores ou clientes com saldo em aberto foi encontrado.',
+    rows: flaggedRows,
+    isAttention: flaggedRows.length > 0
+  };
+}
+
 function findAccountRow(rows: LedgerLine[], account: string): LedgerLine | undefined {
   return rows.find((row) => row.account === account);
 }
@@ -1075,6 +1278,17 @@ function numbersAreEqual(left?: number, right?: number): boolean {
 
 function sumCredits(rows: LedgerLine[]): number {
   return rows.reduce((sum, row) => sum + row.creditNumber, 0);
+}
+
+/**
+ * `period` ja vem formatado por extractMetadata como "DD/MMM/AAAA ate
+ * DD/MMM/AAAA" - so falta conferir se a segunda data termina em dezembro.
+ * Usado pelas analises 14 e 15, que so fazem sentido num fechamento anual.
+ * Retorna false com seguranca quando o periodo nao foi identificado, em vez
+ * de assumir dezembro sem confirmar.
+ */
+export function isDecemberClosing(period: string): boolean {
+  return /\/DEZ\/\d{4}\s*$/i.test(period.trim());
 }
 
 function normalizeForCompare(value: string): string {

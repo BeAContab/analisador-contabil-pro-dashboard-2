@@ -1,3 +1,6 @@
+/** Navegacao principal do app - unico lugar que define as views validas (antes duplicado entre App.tsx e Sidebar.tsx). */
+export type View = 'main' | 'privacy' | 'security' | 'docs' | 'dre';
+
 export type AlertType = 'Ativo com saldo C' | 'Passivo/PL com saldo D';
 
 export interface LedgerLine {
@@ -85,7 +88,11 @@ export type AnalysisKind =
   | 'analysis9'
   | 'analysis10'
   | 'analysis11'
-  | 'analysis12';
+  | 'analysis12'
+  | 'analysis13'
+  | 'analysis14'
+  | 'analysis15'
+  | 'analysis16';
 
 export interface AnalysisReport {
   kind: AnalysisKind;
@@ -126,4 +133,65 @@ export interface DepreciationPairRow {
   /** Valor absoluto do S. Atual da depreciacao/amortizacao/exaustao. */
   depreciationCurrentBalance: number;
   correctiveAction: string;
+}
+
+/**
+ * DRE (Demonstracao do Resultado) - documento diferente do balancete, com seu
+ * proprio parser (`dreParser.ts`) e sua propria arvore de tipos, sem estender
+ * `CompanyReport`/`AnalysisKind`. Ver CLAUDE.md e o plano de implementacao
+ * para o porque da separacao.
+ */
+export interface DreColumnValue {
+  /** Texto exatamente como aparece no PDF (preserva parenteses/formatacao). */
+  raw: string;
+  value: number;
+}
+
+export interface DreLineItem {
+  label: string;
+  /** Nivel de indentacao visual no PDF (0 = categoria de topo). */
+  level: number;
+  /** Um valor por periodo, na mesma ordem de `DreReport.periods`. */
+  periodValues: Array<DreColumnValue | undefined>;
+  total?: DreColumnValue | undefined;
+  percent?: DreColumnValue | undefined;
+  average?: DreColumnValue | undefined;
+  averagePreviousYear?: DreColumnValue | undefined;
+}
+
+export type DreAnalysisKind = 'dreWaterfall' | 'dreVariation' | 'dreMargins' | 'dreMissingComparison';
+
+/**
+ * Uma linha generica de resultado de analise de DRE: um rotulo mais uma lista
+ * ordenada de celulas (cabecalho + valor ja formatado). As 4 analises tem
+ * formatos bem diferentes entre si (cascata, variacao, margens, colunas
+ * zeradas) - esse formato flexivel deixa a UI renderizar todas de forma
+ * generica, sem uma tabela dedicada por analise.
+ */
+export interface DreAnalysisRow {
+  label: string;
+  cells: Array<{ header: string; value: string }>;
+}
+
+export interface DreAnalysisReport {
+  kind: DreAnalysisKind;
+  title: string;
+  intro: string;
+  message: string;
+  rows: DreAnalysisRow[];
+  isAttention: boolean;
+}
+
+export interface DreReport {
+  id: string;
+  fileName: string;
+  companyName: string;
+  cnpj: string;
+  /** Rotulos dos periodos como aparecem no PDF (ex.: "jan/2026", "fev/2026"). */
+  periods: string[];
+  /** Rotulo da coluna de media do ano anterior como aparece no PDF (ex.: "Média 2025"). */
+  previousYearLabel: string;
+  lines: DreLineItem[];
+  analysisReports: DreAnalysisReport[];
+  errors: string[];
 }

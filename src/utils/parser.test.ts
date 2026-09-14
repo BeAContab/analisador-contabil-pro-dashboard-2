@@ -5,6 +5,7 @@ import {
   extractLedgerLines,
   extractMetadata,
   groupItemsIntoLines,
+  isDecemberClosing,
   mergeContinuationLines,
   parseLedgerLine
 } from './parser';
@@ -210,5 +211,24 @@ describe('extractMetadata (CNPJ)', () => {
   it('falls back to the not-identified message when no CNPJ is present', () => {
     const meta = extractMetadata('Empresa Teste LTDA\nsem numero de documento\n', 'balancete.pdf');
     expect(meta.cnpj).toBe('CNPJ não identificado');
+  });
+});
+
+// Usado pelas analises 14 e 15 (Distribuicao Antecipada de Lucros e
+// Emprestimos a Socios), que so fazem sentido num balancete de fechamento
+// anual. Strings reais coletadas nos 16 balancetes de balancetes/ ao validar
+// o plano dessas analises.
+describe('isDecemberClosing', () => {
+  it('returns true when the period ends in December (fechamento anual)', () => {
+    expect(isDecemberClosing('01/JAN/2025 até 31/DEZ/2025')).toBe(true);
+    expect(isDecemberClosing('01/OUT/2025 até 31/DEZ/2025')).toBe(true);
+  });
+
+  it('returns false for a period ending in any other month', () => {
+    expect(isDecemberClosing('01/ABR/2026 até 30/ABR/2026')).toBe(false);
+  });
+
+  it('returns false when the period could not be identified, instead of assuming December', () => {
+    expect(isDecemberClosing('Período não identificado')).toBe(false);
   });
 });

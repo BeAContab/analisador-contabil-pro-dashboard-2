@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 1.2.0 - 2026-09-14
+- Adicionado um segundo fluxo completo no app, "Análise de DRE" (Demonstração do Resultado), ao lado da Análise de Balancete existente: novo item no menu lateral, upload de PDF dedicado e um card de detalhe próprio por empresa.
+- Novo parser (`dreParser.ts`) reconstrói as colunas da DRE (mês a mês, Total, %, Média e Média do ano anterior) a partir da posição de cada valor no PDF, já que a ordem do texto extraído não segue a ordem visual das colunas nesse tipo de documento.
+- Quatro análises automáticas para DRE: conferência aritmética da cascata de resultado (Receita Bruta → Lucro do Exercício), maiores variações mês a mês por linha, margens mensais (Bruta/Operacional/Líquida) e alerta de comparativo anual ausente (colunas de Média zeradas).
+- Exportação em XLSX e PDF das linhas extraídas e das 4 análises, mesmo padrão usado no relatório de balancete.
+- Parsing de balancete e de DRE dividem a mesma Web Worker (roteada por tipo de documento) para não duplicar o pacote do pdf.js no build.
+
+## 1.1.0 - 2026-09-14
+- Adicionadas 4 novas análises automáticas ao relatório de balancete: Salário Família/Maternidade a Compensar (Cod.R. 29/30) não zerado, Distribuição Antecipada de Lucros não zerada no fechamento de dezembro, Empréstimos a Sócios/Terceiros em aberto no fechamento e Adiantamentos a Fornecedores/Clientes em aberto.
+- Corrigido falso positivo na análise de Salário Família/Maternidade: contas de código Cod.R. 29/30 sem relação com a compensação de INSS (achadas em arquivo de exemplo) deixaram de ser sinalizadas.
+
 ## 1.0.33 - 2026-08-17
 - Assistente de IA passou a funcionar para qualquer visitante do site publicado sem precisar colar chave: adicionado proxy de backend (`api/tess-chat.ts`) que usa uma chave padrao da Barreira & Associados guardada no servidor.
 - Quem preferir ainda pode informar a propria conta TESS (chave, Workspace ID e Agent ID) no painel do assistente, usada no lugar da chave padrao.

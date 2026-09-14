@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import packageJson from '../../package.json';
+import { View } from '../types';
 
 interface SidebarProps {
-  currentView: 'main' | 'privacy' | 'security' | 'docs';
-  onNavigate: (view: 'main' | 'privacy' | 'security' | 'docs') => void;
+  currentView: View;
+  onNavigate: (view: View) => void;
 }
 
 export function Sidebar({ currentView, onNavigate }: SidebarProps) {
@@ -33,7 +34,8 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
   }, [isCollapsed]);
 
   const navItems = [
-    { id: 'main', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'main', label: 'Análise de Balancete', icon: 'dashboard' },
+    { id: 'dre', label: 'Análise de DRE', icon: 'insights' },
     { id: 'privacy', label: 'Privacy Policy', icon: 'policy' },
     { id: 'security', label: 'Data Security', icon: 'security' },
     { id: 'docs', label: 'Documentation', icon: 'description' },
