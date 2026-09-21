@@ -132,7 +132,7 @@ export function DataTable({ rows, kind }: DataTableProps) {
                   <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">{row.credit}</td>
                   <td className="px-4 py-3 text-right font-mono text-sm font-bold text-foreground group-hover:text-primary transition-colors">{row.currentBalance}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground align-middle">
-                    <div className="bg-background border border-surface-border px-3 py-1.5 rounded-md shadow-sm line-clamp-2" title={correctiveAction(kind, row)}>
+                    <div className="bg-background border border-surface-border px-3 py-1.5 rounded-md shadow-sm" title={correctiveAction(kind, row)}>
                       {correctiveAction(kind, row)}
                     </div>
                   </td>
