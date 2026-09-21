@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 1.2.1 - 2026-09-21
+- Reescrita a acao corretiva da analise "Adiantamentos a Fornecedores e Clientes": alem de pedir o razao contabil, agora orienta o contador a contatar a empresa para confirmar origem e situacao de cada adiantamento (entrega pendente, devolucao ou baixa) e regularizar os lancamentos.
+
 ## 1.2.0 - 2026-09-14
 - Adicionado um segundo fluxo completo no app, "Análise de DRE" (Demonstração do Resultado), ao lado da Análise de Balancete existente: novo item no menu lateral, upload de PDF dedicado e um card de detalhe próprio por empresa.
 - Novo parser (`dreParser.ts`) reconstrói as colunas da DRE (mês a mês, Total, %, Média e Média do ano anterior) a partir da posição de cada valor no PDF, já que a ordem do texto extraído não segue a ordem visual das colunas nesse tipo de documento.

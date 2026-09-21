@@ -221,7 +221,7 @@ export function correctiveAction(kind: ReportKind, row?: LedgerLine | InvertedBa
     return 'Revisar com o cliente a natureza e a regularizacao do emprestimo em aberto com socio/terceiro no fechamento do exercicio (risco societario e de distribuicao disfarcada de lucro).';
   }
   if (kind === 'analysis16') {
-    return 'Solicitar o razao contabil da conta para identificar o fornecedor ou cliente correspondente a cada saldo em aberto.';
+    return 'Solicitar o razao contabil da conta para identificar a contraparte de cada saldo (fornecedor, no adiantamento do ativo; cliente da empresa, no adiantamento do passivo). Com a lista em maos, o contador deve contatar a empresa para confirmar a origem e a situacao de cada adiantamento (entrega pendente, devolucao ou baixa) e regularizar os lancamentos.';
   }
 
   return 'Revisar a origem do alerta e ajustar os lancamentos ou classificacoes contabeis relacionados.';
