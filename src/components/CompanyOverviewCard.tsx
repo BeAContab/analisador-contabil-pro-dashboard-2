@@ -1,5 +1,5 @@
 import { CompanyReport } from '../types';
-import { reportTabs, reportHasOccurrence } from '../utils/reports';
+import { companyAlertCount, companyHasAlerts } from '../utils/reports';
 
 interface CompanyOverviewCardProps {
   company: CompanyReport;
@@ -7,10 +7,8 @@ interface CompanyOverviewCardProps {
 }
 
 export function CompanyOverviewCard({ company, onClick }: CompanyOverviewCardProps) {
-  const visibleTabs = reportTabs.filter((tab) => reportHasOccurrence(company, tab.kind));
-  const hasErrors = company.errors.length > 0;
-  const hasUnclassified = company.unclassified.length > 0;
-  const hasAlerts = visibleTabs.length > 0 || hasErrors || hasUnclassified;
+  const alertCount = companyAlertCount(company);
+  const hasAlerts = companyHasAlerts(company);
 
   return (
     <div
@@ -39,7 +37,7 @@ export function CompanyOverviewCard({ company, onClick }: CompanyOverviewCardPro
         <span className={`text-xs font-bold px-3 py-1 rounded-full ${
           hasAlerts ? 'bg-error/10 text-error' : 'bg-success/10 text-success'
         }`}>
-          {hasAlerts ? `${visibleTabs.length} Alerta(s)` : 'Sem Alertas'}
+          {hasAlerts ? `${alertCount} Alerta(s)` : 'Sem Alertas'}
         </span>
       </div>
       
