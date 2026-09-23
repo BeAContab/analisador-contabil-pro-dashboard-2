@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## 1.3.0 - 2026-09-23
+- Adicionado o botao "Baixar relatorios" na tela de "Relatorios por Empresa": abre uma janela para escolher quais empresas exportar (marcar/desmarcar uma a uma ou todas), com opcao "Somente com alertas" (padrao) ou "Todos", e os formatos XLSX e/ou PDF. Os arquivos sao gerados no navegador e entregues em um unico ZIP.
+- Nome dos arquivos exportados passou a incluir o periodo do balancete, evitando que meses diferentes da mesma empresa gerem arquivos com o mesmo nome.
+- Empresas sem ocorrencias agora podem ser exportadas em lote (planilha com aba "Sem ocorrencias" e PDF so com o cabecalho).
+- A regra de "empresa com alerta" passou a ter uma unica definicao, compartilhada entre o card da empresa e a selecao de exportacao.
+
 ## 1.2.1 - 2026-09-21
 - Reescrita a acao corretiva da analise "Adiantamentos a Fornecedores e Clientes": alem de pedir o razao contabil, agora orienta o contador a contatar a empresa para confirmar origem e situacao de cada adiantamento (entrega pendente, devolucao ou baixa) e regularizar os lancamentos.
 

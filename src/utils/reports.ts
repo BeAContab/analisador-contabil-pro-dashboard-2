@@ -150,8 +150,20 @@ export function reportIntro(kind: ReportKind, company?: CompanyReport): string {
   return company ? analysisIntro(company, kind) : '';
 }
 
+/** Inclui o periodo no nome: varios balancetes da mesma empresa (meses diferentes) nao podem colidir. */
 export function reportFileName(company: CompanyReport, extension: 'xlsx' | 'pdf') {
-  return `${slugify(company.companyName)}_relatorios-consolidados.${extension}`;
+  const period = company.period && company.period !== '-' ? `_${slugify(company.period)}` : '';
+  return `${slugify(company.companyName)}${period}_relatorios-consolidados.${extension}`;
+}
+
+/** Quantos relatorios (abas) da empresa tem ocorrencia - o numero exibido como "Alerta(s)" no card. */
+export function companyAlertCount(company: CompanyReport): number {
+  return reportTabs.filter((tab) => reportHasOccurrence(company, tab.kind)).length;
+}
+
+/** Fonte unica da regra "empresa com alerta", usada pelo card e pela selecao de exportacao em lote. */
+export function companyHasAlerts(company: CompanyReport): boolean {
+  return companyAlertCount(company) > 0 || company.errors.length > 0 || company.unclassified.length > 0;
 }
 
 /** `InvertedBalanceRow` e a unica variante com `alertType` - o discriminante e a propria presenca do campo, sem precisar de tag explicita. */
@@ -233,6 +245,15 @@ export function hasExportContent(company: CompanyReport): boolean {
 
 export async function downloadXlsx(company: CompanyReport) {
   const XLSX = await import('xlsx');
+  XLSX.writeFile(buildWorkbook(XLSX, company), reportFileName(company, 'xlsx'));
+}
+
+export async function buildXlsxBytes(company: CompanyReport): Promise<Uint8Array> {
+  const XLSX = await import('xlsx');
+  return new Uint8Array(XLSX.write(buildWorkbook(XLSX, company), { bookType: 'xlsx', type: 'array' }));
+}
+
+function buildWorkbook(XLSX: typeof import('xlsx'), company: CompanyReport) {
   const workbook = XLSX.utils.book_new();
   const createdAt = nowLabel();
 
@@ -305,10 +326,37 @@ export async function downloadXlsx(company: CompanyReport) {
     );
   });
 
-  XLSX.writeFile(workbook, reportFileName(company, 'xlsx'));
+  // Uma planilha sem nenhuma aba e invalida (SheetJS lanca erro): empresas sem
+  // ocorrencias, incluidas na exportacao em lote, ganham uma aba explicativa.
+  if (workbook.SheetNames.length === 0) {
+    XLSX.utils.book_append_sheet(
+      workbook,
+      buildWorksheet(
+        XLSX.utils.aoa_to_sheet,
+        company,
+        'Sem ocorrencias',
+        ['Resultado'],
+        [['Nenhuma ocorrencia encontrada nas analises deste balancete.']],
+        createdAt
+      ),
+      'Sem ocorrencias'
+    );
+  }
+
+  return workbook;
 }
 
 export async function downloadPdf(company: CompanyReport) {
+  const doc = await buildPdfDoc(company);
+  doc.save(reportFileName(company, 'pdf'));
+}
+
+export async function buildPdfBytes(company: CompanyReport): Promise<Uint8Array> {
+  const doc = await buildPdfDoc(company);
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+
+async function buildPdfDoc(company: CompanyReport) {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable')
@@ -380,7 +428,12 @@ export async function downloadPdf(company: CompanyReport) {
     );
   });
 
-  doc.save(reportFileName(company, 'pdf'));
+  if (nextY === 166) {
+    doc.setFontSize(10);
+    doc.text('Nenhuma ocorrencia encontrada nas analises deste balancete.', 40, nextY);
+  }
+
+  return doc;
 }
 
 function buildWorksheet(

@@ -8,6 +8,7 @@ import { SummaryCards } from './components/SummaryCards';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { DreOverviewCard } from './components/DreOverviewCard';
 import { DreCard } from './components/DreCard';
+import { ExportModal } from './components/ExportModal';
 import { useFileProcessing } from './hooks/useFileProcessing';
 import { useDreProcessing } from './hooks/useDreProcessing';
 import { companyOccurrences, companyReportsWithAlerts } from './utils/occurrences';
@@ -23,6 +24,7 @@ export function App() {
   const [view, setView] = useState<View>('main');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedDreReportId, setSelectedDreReportId] = useState<string | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const {
     files,
@@ -135,9 +137,18 @@ export function App() {
                       />
 
                       <div className="mt-8">
-                        <div className="flex flex-col gap-2 mb-6">
-                          <h3 className="text-xl font-bold text-foreground">Relatórios por Empresa</h3>
-                          <p className="text-sm text-muted-foreground">Selecione uma empresa abaixo para detalhar os achados.</p>
+                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+                          <div className="flex flex-col gap-2">
+                            <h3 className="text-xl font-bold text-foreground">Relatórios por Empresa</h3>
+                            <p className="text-sm text-muted-foreground">Selecione uma empresa abaixo para detalhar os achados.</p>
+                          </div>
+                          <button
+                            onClick={() => setIsExportOpen(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-primary border border-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary-hover hover:shadow-md transition-all self-start sm:self-auto"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">download</span>
+                            Baixar relatórios
+                          </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                           {reports.map((report) => (
@@ -249,6 +260,8 @@ export function App() {
             {view === 'security' && <DataSecurity />}
             {view === 'docs' && <LocalProcessingDoc />}
           </Suspense>
+
+          {isExportOpen && <ExportModal companies={reports} onClose={() => setIsExportOpen(false)} />}
 
           {isProcessing && (
             <ProcessingOverlay
